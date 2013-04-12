@@ -130,42 +130,33 @@ function parseVTX1(bmd, stream, offset, size) {
     stream.pos = vtx1.offset + vtx1.arrayFormatOffset;
     vtx1.arrayFormats = collect(stream, parseArrayFormat, numArrays);
 
-    function roundLength(v, x) {
-        return v + (x - (v % x));
-    }
-
-    function readArray(stream, format, length, itemSize) {
+    function readArray(stream, format, length) {
         var data;
         switch (format.dataType) {
             case 3: // s16 fixed point
                 var scale = Math.pow(0.5, format.decimalPoint);
                 length /= 2;
-                data = new Float32Array(roundLength(length, itemSize));
+                data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
                     data[i] = readSWord(stream) * scale;
                 break;
             case 4: // f32
                 length /= 4;
-                data = new Float32Array(roundLength(length, itemSize));
+                data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
                     data[i] = readFloat(stream);
                 break;
             case 5: // rgb(a)
-                data = new Float32Array(roundLength(length, itemSize));
+                data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
                     data[i] = readByte(stream) / 255;
                 break;
         }
 
-        stream.pos += length;
-        return { data: data, itemSize: itemSize };
+        return data;
     }
 
     vtx1.arrays = {};
-
-    function roundLength(v, x) {
-        return v + (x - (v % x));
-    }
 
     for (var i = 0, j = 0; i < 13; i++) {
         if (vtx1.offsets[i] == 0)
@@ -207,8 +198,12 @@ function parseVTX1(bmd, stream, offset, size) {
                 break;
         }
 
+        var arr = {};
+
         stream.pos = vtx1.offset + vtx1.offsets[i];
-        vtx1.arrays[format.arrayType] = readArray(stream, format, length, itemSize);
+        arr.data = readArray(stream, format, length);
+        arr.itemSize = itemSize;
+        vtx1.arrays[format.arrayType] = arr;
 
         j++;
     }
