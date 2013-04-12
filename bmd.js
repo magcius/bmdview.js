@@ -119,11 +119,9 @@ function parseVTX1(bmd, stream, offset, size) {
         var format = {};
         format.arrayType = readLong(stream);
         format.componentCount = readLong(stream);
-
         format.dataType = readLong(stream);
         format.decimalPoint = readByte(stream);
-        format.unk3 = readByte(stream);
-        format.unk4 = readWord(stream);
+        stream.pos += 3; // unk
         return format;
     }
 
