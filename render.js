@@ -109,6 +109,232 @@ function createScene(gl) {
     return scene;
 }
 
+function glslValue(val) {
+    if (val.toFixed)
+        return val.toFixed(6);
+    else
+        return "" + val;
+}
+
+function glslCall(name, args) {
+    return name + "(" + args.map(glslValue).join(", ") + ")";
+}
+
+function getKonstIdName(id) {
+    return "konst" + id;
+}
+
+function getRegIdName(id) {
+    if (id == 0)
+        return "gl_FragColor";
+    else
+        return "r_color" + (id - 1);
+}
+
+function getTexAccess(info) {
+    // XXX
+    return "vec4(0.5, 0.5, 0.5, 1.0)";
+}
+
+function getRasColor(info) {
+    // XXX
+    return "v_color0";
+}
+
+function getColorIn(op, konst, info) {
+    function makeVector(factor) {
+        return glslCall("vec3", [factor, factor, factor]);
+    }
+
+    var suffixes = [".rgb", ".aaa"];
+    var suffix = suffixes[op & 1];
+
+    switch (op) {
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        case 0x03:
+        case 0x04:
+        case 0x05:
+        case 0x06:
+        case 0x07:
+            return getRegIdName(op >> 1) + suffix;
+        case 0x08:
+        case 0x09:
+            return getTexAccess(info) + suffix;
+        case 0x0A:
+        case 0x0B:
+            return getRasColor(info) + suffix;
+        case 0x0C:
+            return makeVector("1.0");
+        case 0x0D:
+            return makeVector("0.5");
+        case 0x0E:
+            switch (konst) {
+                case 0x00: return makeVector("1.0");
+                case 0x01: return makeVector("0.875");
+                case 0x02: return makeVector("0.75");
+                case 0x03: return makeVector("0.625");
+                case 0x04: return makeVector("0.5");
+                case 0x05: return makeVector("0.375");
+                case 0x06: return makeVector("0.25");
+                case 0x07: return makeVector("0.125");
+                case 0x08:
+                case 0x09:
+                case 0x0A:
+                case 0x0B:
+                    console.warn("unknown color factor");
+                    return "";
+                default:
+                    konst -= 0x0C;
+                    suffixes = [".rgb", ".rrr", ".ggg", ".bbb", ".aaa"];
+                    suffix = suffixes[(konst / 4) | 0];
+                    return getKonstIdName(konst % 4) + suffix;
+            }
+        case 0x0F:
+            return makeVector("0.0");
+        default:
+            console.warn("unknown color op", op);
+            return "";
+    }
+}
+
+function getAlphaIn(op, konst, info) {
+    switch (op) {
+        case 0x00:
+        case 0x01:
+        case 0x02:
+        case 0x03:
+            return getRegIdName(op) + ".a";
+        case 0x04:
+            return getTexAccess(info) + ".a";
+        case 0x05:
+            return getRasColor(info) + ".a";
+        case 0x06:
+            switch (konst) {
+                case 0x00: return "1.0";
+                case 0x01: return "0.875";
+                case 0x02: return "0.75";
+                case 0x03: return "0.625";
+                case 0x04: return "0.5";
+                case 0x05: return "0.375";
+                case 0x06: return "0.25";
+                case 0x07: return "0.125";
+                case 0x08:
+                case 0x09:
+                case 0x0A:
+                case 0x0B:
+                case 0x0C:
+                case 0x0D:
+                case 0x0E:
+                case 0x0F:
+                    console.warn("unknown alpha factor");
+                default:
+                    konst -= 0x10;
+                    var suffixes = [".r", ".g", ".b", ".a"];
+                    var suffix = suffixes[(konst / 4) | 0];
+                    return getKonstIdName(konst % 4) + suffix;
+            }
+        case 0x07:
+            return "0.0";
+        default:
+            console.warn("unknown alpha op");
+            return "";
+    }
+}
+
+function getMods(dest, bias, scale, clamp, type) {
+    function makeOperand(factor) {
+        if (type == 0)
+            return glslCall("vec3", [factor, factor, factor]);
+        else
+            return glslValue(factor);
+    }
+    var lines = [];
+
+    var biases = [ "+", "-" ];
+    if (bias == 1 || bias == 2)
+        lines.push(dest + " += " + biases[bias - 1] + " " + makeOperand(0.5) + ";");
+
+    var scales = [ 2, 4, .5 ];
+    if (scale > 0)
+        lines.push(dest + " *= " + glslValue(scales[scale - 1]) + ";");
+
+    if (clamp)
+        lines.push(dest + " = " + glslCall("clamp", [dest, makeOperand("0.0"), makeOperand("1.0")]) + ";");
+
+    return lines;
+}
+
+function getOp(op, bias, scale, clamp, regId, ins, type) {
+    var suffix = [".rgb", ".a"];
+    var dest = getRegIdName(regId) + suffix[type];
+    var lines = [];
+
+    switch (op) {
+        case 0x00:
+        case 0x01:
+            var opStr = (op == 0) ? "" : "-";
+            lines.push(dest + " = " + opStr + glslCall("mix", ins.slice(0, 3)) + " + " + ins[3] + ";");
+            lines.push.apply(lines,getMods(dest, bias, scale, clamp, type));
+            break;
+        default:
+            console.warn("unsupported op");
+            break;
+    }
+
+    return lines;
+}
+
+function getAlphaCompareComponent(comp, ref) {
+    var refStr = glslValue(ref / 255);
+    switch (comp) {
+        case 0: // GX_NEVER
+            return "false";
+        case 1: // GX_LESS
+            return "gl_FragColor.a < " + refStr;
+        case 2: // GX_EQUAL
+            return "gl_FragColor.a == " + refStr;
+        case 3: // GX_LEQUAL
+            return "gl_FragColor.a <= " + refStr;
+        case 4: // GX_GREATER
+            return "gl_FragColor.a > " + refStr;
+        case 5: // GX_NEQUAL
+            return "gl_FragColor.a != " + refStr;
+        case 6: // GX_GEQUAL
+            return "gl_FragColor.a >= " + refStr;
+        case 7: // GX_ALWAYS
+            return "true";
+        default:
+            console.warn("bad compare component");
+    }
+}
+
+function getAlphaCompareOp(op) {
+    switch (op) {
+        case 0: // GX_AOP_AND
+            return "a && b";
+        case 1: // GX_AOP_OR
+            return "a || b";
+        case 2: // GX_AOP_XOR
+            return "a != b";
+        case 3: // GX_AOP_XNOR
+            return "a == b";
+        default:
+            console.warn("bad compare op")
+    }
+}
+
+function getAlphaCompare(ac) {
+    var lines = [];
+    lines.push("bool a = " + getAlphaCompareComponent(ac.comp0, ac.ref0) + ";");
+    lines.push("bool b = " + getAlphaCompareComponent(ac.comp1, ac.ref1) + ";");
+    lines.push("");
+    lines.push("if (!(" + getAlphaCompareOp(ac.alphaOp) + "))");
+    lines.push("    discard;");
+    return lines;
+}
+
 function generateShader(decls, main) {
     var indentedMain = main.map(function(x) {
         return "    " + x;
@@ -157,22 +383,99 @@ function generateBatchVertShader(batch, bmd, material) {
 }
 
 function generateBatchFragShader(batch, bmd, material) {
+    var mat3 = bmd.mat3;
     var header = [];
     var varyings = [];
+    var init = [];
     var main = [];
 
     header.push("precision mediump float;");
 
-    if (batch.attribNames["color0"]) {
-        varyings.push("varying vec4 v_color0;");
-        main.push("gl_FragColor = v_color0;");
+    for (var i = 0; i < 2; i++) {
+        var name = "color" + i;
+        if (!batch.attribNames[name])
+            continue;
+
+        varyings.push("varying vec4 v_" + name + ";");
     }
+
+    function colorVec(color) {
+        var args = [color.r, color.g, color.b, color.a];
+        return glslCall("vec4", args);
+    }
+
+    // Check what we need.
+    var needKonst = [false, false, false, false];
+    var needReg = [false, false, false, false];
+
+    for (var i = 0; i < mat3.tevCounts[material.tevCountIndex]; i++) {
+        var konstColor = material.constColorSel[i];
+        var konstAlpha = material.constAlphaSel[i];
+        var stage = mat3.tevStageInfos[material.tevStageInfo[i]];
+        var order = mat3.tevOrderInfos[material.tevOrderInfo[i]];
+
+        needReg[stage.colorRegId] = true;
+        needReg[stage.alphaRegId] = true;
+
+        stage.colorIn.forEach(function(x) {
+            if (x == 0x0E && konstColor >= 0x0C)
+                needKonst[(konstColor - 0x0C) % 4] = true;
+            if (x <= 0x07)
+                needReg[(x / 2) | 0] = true;
+        });
+
+        stage.alphaIn.forEach(function(x) {
+            if (x == 0x06 && konstAlpha >= 0x10)
+                needKonst[(konstAlpha - 0x10) % 4] = true;
+            if (x <= 0x03)
+                needReg[x] = true;
+        });
+
+        var colorsIn = stage.colorIn.map(function(x) {
+            return getColorIn(x, konstColor, order);
+        });
+        var alphasIn = stage.alphaIn.map(function(x) {
+            return getAlphaIn(x, konstAlpha, order);
+        });
+
+        main.push("// Tev stage " + i);
+        main.push.apply(main, getOp(stage.colorOp, stage.colorBias, stage.colorScale,
+                                    stage.colorClamp, stage.colorRegId, colorsIn, 0));
+        main.push.apply(main, getOp(stage.alphaOp, stage.alphaBias, stage.alphaScale,
+                                    stage.alphaClamp, stage.alphaRegId, alphasIn, 1));
+        main.push("");
+    }
+
+    main.push.apply(main,getAlphaCompare(mat3.alphaCompares[material.alphaCompIndex]));
+
+    // Declare constants
+    needKonst.forEach(function(x, i) {
+        if (!x)
+            return;
+
+        var color = mat3.color3[material.color3[i]];
+        init.push("const vec4 " + getKonstIdName(i) + " = " + colorVec(color) + ";");
+    });
+
+    // Declare registers
+    needReg.forEach(function(x, i) {
+        if (i == 0 || !x)
+            return;
+
+        var color = mat3.colorS10[material.colorS10[i - 1]];
+        init.push("vec4 " + getRegIdName(i) + " = " + colorVec(color) + ";");
+    });
 
     var decls = [];
     decls.push.apply(decls, header);
     decls.push("");
     decls.push.apply(decls, varyings);
-    return { src: generateShader(decls, main) };
+
+    var src = [];
+    src.push.apply(src, init);
+    src.push("");
+    src.push.apply(src, main);
+    return { src: generateShader(decls, src) };
 }
 
 function compileShader(gl, str, type) {
@@ -262,8 +565,8 @@ function modelFromBmd(gl, bmd) {
                 model.commands.push({ type: "updateMatrix", idx: entry.index, matrix: matrix });
                 break;
             case 0x11: // material, TODO
-                // var index = bmd.mat3.indexToMatIndex[entry.index];
-                // material = bmd.mat3.materials[index];
+                var index = bmd.mat3.indexToMatIndex[entry.index];
+                material = bmd.mat3.materials[index];
                 break;
             case 0x12: // batch
                 var batch = bmd.shp1.batches[entry.index];
@@ -283,7 +586,7 @@ window.addEventListener('load', function() {
 
     var scene = createScene(gl);
     var camera = mat4.create();
-    mat4.translate(camera, camera, [0, 0, -1280]);
+    mat4.translate(camera, camera, [0, 0, -1200]);
     scene.setCamera(camera);
 
     loadModel("faceship.bmd", function(bmd) {

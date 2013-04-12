@@ -96,6 +96,15 @@ function parseINF1(bmd, stream, offset, size) {
     return inf1;
 }
 
+function getSectionLength(entry, start) {
+    var offs = entry.offsets[start];
+    for (var i = start + 1; i < 13; i++) {
+        if (entry.offsets[i] != 0)
+            return entry.offsets[i] - offs;
+    }
+    return entry.size - offs;
+}
+
 function parseVTX1(bmd, stream, offset, size) {
     var vtx1 = { offset: offset, size: size };
     vtx1.arrayFormatOffset = readLong(stream);
@@ -120,15 +129,6 @@ function parseVTX1(bmd, stream, offset, size) {
 
     stream.pos = vtx1.offset + vtx1.arrayFormatOffset;
     vtx1.arrayFormats = collect(stream, parseArrayFormat, numArrays);
-
-    function getLength(start) {
-        var offs = vtx1.offsets[start];
-        for (var i = start + 1; i < 13; i++) {
-            if (vtx1.offsets[i] != 0)
-                return vtx1.offsets[i] - offs;
-        }
-        return vtx1.size - offs;
-    }
 
     function roundLength(v, x) {
         return v + (x - (v % x));
@@ -171,7 +171,7 @@ function parseVTX1(bmd, stream, offset, size) {
         if (vtx1.offsets[i] == 0)
             continue;
 
-        var length = getLength(i);
+        var length = getSectionLength(vtx1, i);
         var format = vtx1.arrayFormats[j];
 
         var itemSize, arr;
@@ -566,7 +566,178 @@ function parseDummy(bmd, stream, offset, size) {
 }
 
 function parseMAT3(bmd, stream, offset, size) {
-    return parseDummy(bmd, stream, offset, size);
+    var mat3 = { offset: offset, size: size };
+    mat3.count = readWord(stream);
+    stream.pos += 2; // pad
+    mat3.offsets = collect(stream, readLong, 30);
+
+    stream.pos = mat3.offset + mat3.offsets[2];
+    mat3.nameTable = parseStringTable(stream);
+
+    stream.pos = mat3.offset + mat3.offsets[1];
+    mat3.indexToMatIndex = collect(stream, readWord, mat3.count);
+    var maxIndex = Math.max.apply(null, mat3.indexToMatIndex);
+
+    function parseColor(stream) {
+        var color = {};
+        color.r = readByte(stream) / 255;
+        color.g = readByte(stream) / 255;
+        color.b = readByte(stream) / 255;
+        color.a = readByte(stream) / 255;
+        return color;
+    }
+
+    function parseColorShort(stream) {
+        var color = {};
+        color.r = readSWord(stream) / 255;
+        color.g = readSWord(stream) / 255;
+        color.b = readSWord(stream) / 255;
+        color.a = readSWord(stream) / 255;
+        return color;
+    }
+
+    function readSection(stream, offset, func, itemSize) {
+        stream.pos = mat3.offset + mat3.offsets[offset];
+        return collect(stream, func, getSectionLength(mat3, offset) / itemSize);
+    }
+
+    mat3.color1 = readSection(stream, 5, parseColor, 4);
+    mat3.color2 = readSection(stream, 8, parseColor, 4);
+    mat3.color3 = readSection(stream, 18, parseColor, 4);
+    mat3.colorS10 = readSection(stream, 17, parseColorShort, 8);
+
+    function parseMatEntry(stream) {
+        var entry = {};
+        entry.flag = readByte(stream);
+        entry.cullIndex = readByte(stream);
+        entry.numChansIndex = readByte(stream);
+        entry.texGenCountIndex = readByte(stream);
+        entry.tevCountIndex = readByte(stream);
+        stream.pos += 1; // unk
+        entry.zModeIndex = readByte(stream);
+        stream.pos += 1; // unk
+        entry.color1 = collect(stream, readWord, 2);
+        entry.chanControls = collect(stream, readWord, 4);
+        entry.color2 = collect(stream, readWord, 2);
+        entry.lights = collect(stream, readWord, 8);
+        entry.texGenInfo = collect(stream, readWord, 8);
+        entry.texGenInfo2 = collect(stream, readWord, 8);
+        entry.texMatrices = collect(stream, readWord, 10);
+        entry.dttMatrices = collect(stream, readWord, 20);
+        entry.texStages = collect(stream, readWord, 8);
+        entry.color3 = collect(stream, readWord, 4);
+        entry.constColorSel = collect(stream, readByte, 16);
+        entry.constAlphaSel = collect(stream, readByte, 16);
+        entry.tevOrderInfo = collect(stream, readWord, 16);
+        entry.colorS10 = collect(stream, readWord, 4);
+        entry.tevStageInfo = collect(stream, readWord, 16);
+        entry.tevSwapModeInfo = collect(stream, readWord, 16);
+        entry.tevSwapModeTable = collect(stream, readWord, 4);
+        stream.pos += 24; // unk
+        stream.pos += 2; // unk
+        entry.alphaCompIndex = readWord(stream);
+        entry.blendIndex = readWord(stream);
+        stream.pos += 2;
+        return entry;
+    }
+
+    stream.pos = mat3.offset + mat3.offsets[0];
+    mat3.materials = collect(stream, parseMatEntry, maxIndex + 1);
+
+    function parseTexMtxInfo(stream) {
+        var texMtxInfo = {};
+        stream.pos += 4; // unk, pad
+        texMtxInfo.f1 = collect(stream, readFloat, 5);
+        stream.pos += 4; // unk, pad
+        texMtxInfo.f2 = collect(stream, readFloat, 2);
+        texMtxInfo.f3 = collect(stream, readFloat, 16);
+        return texMtxInfo;
+    }
+
+    mat3.texMtxInfos = readSection(stream, 13, parseTexMtxInfo, 100);
+    mat3.texStageIndexToTextureIndex = readSection(stream, 15, readWord, 2);
+
+    function parseTevOrderInfo(stream) {
+        var tevOrderInfo = {};
+        tevOrderInfo.texCoordId = readByte(stream);
+        tevOrderInfo.texMap = readByte(stream);
+        tevOrderInfo.chanId = readByte(stream);
+        stream.pos += 1; // pad
+        return tevOrderInfo;
+    }
+
+    mat3.tevOrderInfos = readSection(stream, 16, parseTevOrderInfo, 4);
+
+    mat3.tevCounts = readSection(stream, 19, readByte, 1);
+
+    function parseTevStageInfo(stream) {
+        var tevStageInfo = {};
+        stream.pos += 1; // unk
+        tevStageInfo.colorIn = collect(stream, readByte, 4);
+        tevStageInfo.colorOp = readByte(stream);
+        tevStageInfo.colorBias = readByte(stream);
+        tevStageInfo.colorScale = readByte(stream);
+        tevStageInfo.colorClamp = readByte(stream);
+        tevStageInfo.colorRegId = readByte(stream);
+        tevStageInfo.alphaIn = collect(stream, readByte, 4);
+        tevStageInfo.alphaOp = readByte(stream);
+        tevStageInfo.alphaBias = readByte(stream);
+        tevStageInfo.alphaScale = readByte(stream);
+        tevStageInfo.alphaClamp = readByte(stream);
+        tevStageInfo.alphaRegId = readByte(stream);
+        stream.pos += 1; // unk
+        return tevStageInfo;
+    }
+
+    mat3.tevStageInfos = readSection(stream, 20, parseTevStageInfo, 20);
+
+    function parseTevSwapModeInfo(stream) {
+        var tevSwapModeInfo = {};
+        tevSwapModeInfo.rasSel = readByte(stream);
+        tevSwapModeInfo.texSel = readByte(stream);
+        stream.pad += 2;
+        return tevSwapModeInfo;
+    }
+
+    mat3.tevSwapModeInfos = readSection(stream, 21, parseTevSwapModeInfo, 4);
+    mat3.tevSwapModeTables = readSection(stream, 22, parseColor, 4);
+
+    function parseAlphaCompare(stream) {
+        var alphaCompare = {};
+        alphaCompare.comp0 = readByte(stream);
+        alphaCompare.ref0 = readByte(stream);
+        alphaCompare.alphaOp = readByte(stream);
+        alphaCompare.comp1 = readByte(stream);
+        alphaCompare.ref1 = readByte(stream);
+        stream.pos += 3; // pad
+        return alphaCompare;
+    }
+
+    mat3.alphaCompares = readSection(stream, 24, parseAlphaCompare, 4);
+
+    function parseBlendInfo(stream) {
+        var blendInfo = {};
+        blendInfo.blendMode = readByte(stream);
+        blendInfo.srcFactor = readByte(stream);
+        blendInfo.dstFactor = readByte(stream);
+        blendInfo.logicOp = readByte(stream);
+        return blendInfo;
+    }
+
+    mat3.blendInfos = readSection(stream, 25, parseBlendInfo, 4);
+
+    function parseZMode(stream) {
+        var zmode = {};
+        zmode.enable = !!readByte(stream);
+        zmode.zFunz = readByte(stream);
+        zmode.enableUpdate = !!readByte(stream);
+        stream.pos += 1; // pad
+        return zmode;
+    }
+
+    mat3.zModes = readSection(stream, 26, parseZMode, 4);
+
+    return mat3;
 }
 
 function parseTEX1(bmd, stream, offset, size) {
