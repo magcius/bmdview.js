@@ -41,7 +41,7 @@ function createScene(gl) {
                 gl.enableVertexAttribArray(prog.locations[name]);
             });
 
-            var matrixTable = matrices.slice();
+            var matrixTable = [];
             function updateMatrixTable(packet) {
                 var updated = false;
                 packet.matrixTable.forEach(function(idx, i) {
@@ -356,10 +356,11 @@ function generateBatchVertShader(batch, bmd, material) {
     // We should always have position.
     uniforms.push("uniform mat4 u_modelView;");
     uniforms.push("uniform mat4 u_projection;");
+    uniforms.push("uniform mat4 u_vertexMatrix;");
 
     attributes.push("attribute vec3 a_position;");
     attribNames.push("position");
-    main.push("gl_Position = u_projection * u_modelView * vec4(a_position, 1.0);");
+    main.push("gl_Position = u_projection * u_modelView * u_vertexMatrix * vec4(a_position, 1.0);");
 
     for (var i = 0; i < 2; i++) {
         var name = "color" + i;
