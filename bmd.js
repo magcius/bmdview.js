@@ -142,7 +142,17 @@ function parseVTX1(bmd, stream, offset, size) {
                     return 2;
                 break;
         }
+    }
 
+    function getDataTypeSize(format) {
+        switch (format.dataType) {
+            case 3: // s16 fixed point
+                return 2;
+            case 4: // f32
+                return 4;
+            case 5: // rgba
+                return 1;
+        }
     }
 
     function parseArrayFormat(stream, offset) {
@@ -157,6 +167,7 @@ function parseVTX1(bmd, stream, offset, size) {
         format.globalOffset = vtx1.offset + offset;
         format.scale = Math.pow(0.5, format.decimalPoint);
         format.itemSize = getItemSize(format);
+        format.dataTypeSize = getDataTypeSize(format);
 
         return format;
     }
@@ -172,22 +183,18 @@ function parseVTX1(bmd, stream, offset, size) {
     });
 
     function readArray(stream, format, length) {
-        var data;
+        length /= format.dataTypeSize;
+        var data = new Float32Array(length);
         switch (format.dataType) {
             case 3: // s16 fixed point
-                length /= 2;
-                data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
                     data[i] = readSWord(stream) * format.scale;
                 break;
             case 4: // f32
-                length /= 4;
-                data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
                     data[i] = readFloat(stream);
                 break;
             case 5: // rgb(a)
-                data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
                     data[i] = readByte(stream) / 255;
                 break;
