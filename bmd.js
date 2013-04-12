@@ -111,7 +111,7 @@ function parseVTX1(bmd, stream, offset, size) {
     vtx1.offsets = collect(stream, readLong, 13);
 
     function getItemSize(format) {
-        switch (format.arrayType) {
+        switch (format.attrib) {
             case 0x09:  // positions
                 if (format.componentCount == 0) // xy
                     return 2;
@@ -148,7 +148,7 @@ function parseVTX1(bmd, stream, offset, size) {
     function parseArrayFormat(stream, offset) {
         var format = {};
 
-        format.arrayType = readLong(stream);
+        format.attrib = readLong(stream);
         format.componentCount = readLong(stream);
         format.dataType = readLong(stream);
         format.decimalPoint = readByte(stream);
@@ -211,7 +211,7 @@ function parseVTX1(bmd, stream, offset, size) {
         stream.pos = format.globalOffset;
         arr.data = readArray(stream, format, length);
         arr.itemSize = format.itemSize;
-        vtx1.arrays[format.arrayType] = arr;
+        vtx1.arrays[format.attrib] = arr;
 
         j++;
     }
