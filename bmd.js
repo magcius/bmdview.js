@@ -185,6 +185,7 @@ function parseVTX1(bmd, stream, offset, size) {
     });
 
     function readArray(stream, format) {
+        stream.pos = format.globalOffset;
         var length = format.sectionLength / format.dataTypeSize;
         var data = new Float32Array(length);
         switch (format.dataType) {
@@ -209,11 +210,7 @@ function parseVTX1(bmd, stream, offset, size) {
 
     Object.keys(vtx1.formats).forEach(function(attrib) {
         var format = vtx1.formats[attrib];
-        var arr = {};
-        stream.pos = format.globalOffset;
-        arr.data = readArray(stream, format);
-        arr.itemSize = format.itemSize;
-        vtx1.arrays[format.attrib] = arr;
+        vtx1.arrays[format.attrib] = readArray(stream, format);
     });
 
     return vtx1;
@@ -416,7 +413,7 @@ function parseSHP1(bmd, stream, offset, size) {
                 console.warn("Unknown attrib data type", attrib.dataType);
 
             attribOffs[attribNames[attrib.attrib]] = itemSize;
-            itemSize += bmd.vtx1.arrays[attrib.attrib].itemSize;
+            itemSize += bmd.vtx1.formats[attrib.attrib].itemSize;
             attribs.push(attrib);
         } while(true);
 
@@ -433,20 +430,18 @@ function parseSHP1(bmd, stream, offset, size) {
         return loc;
     }
 
-    function copyItem(dst, dstOffs, src, srcIdx) {
-        var size = src.itemSize, n = size;
-        var srcOffs = srcIdx * size;
-        while (n--)
-            dst[dstOffs++] = src.data[srcOffs++];
-        return size;
+    function memcpy(dst, dstOffs, src, srcOffs, size) {
+        while (size--)
+            dst[dstOffs++] = src[srcOffs++];
     }
 
     function parsePrimitive(stream, batch, start, count) {
         var dstOffs = start * batch.itemSize;
         for (var i = 0; i < count; i++) {
             batch.attribs.forEach(function(attrib) {
-                var idx;
+                var format = bmd.vtx1.formats[attrib.attrib];
                 var src = bmd.vtx1.arrays[attrib.attrib];
+                var size = format.itemSize;
 
                 switch (attrib.dataType) {
                     case 1:
@@ -457,7 +452,8 @@ function parseSHP1(bmd, stream, offset, size) {
                         break;
                 }
 
-                dstOffs += copyItem(batch.verts, dstOffs, src, idx);
+                memcpy(batch.verts, dstOffs, src, idx * size, size);
+                dstOffs += size;
             });
         }
     }
@@ -536,7 +532,7 @@ function parseSHP1(bmd, stream, offset, size) {
         batch.attribs.forEach(function(attrib) {
             var name = attribNames[attrib.attrib];
             batch.attribNames[name] = true;
-            batch.attribSizes[name] = bmd.vtx1.arrays[attrib.attrib].itemSize;
+            batch.attribSizes[name] = bmd.vtx1.formats[attrib.attrib].itemSize;
         });
         batch.attribOffs = batch.attribs.attribOffs;
         batch.itemSize = batch.attribs.itemSize;
