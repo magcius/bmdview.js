@@ -586,7 +586,7 @@ window.addEventListener('load', function() {
 
     var scene = createScene(gl);
     var camera = mat4.create();
-    mat4.translate(camera, camera, [0, 0, -1200]);
+    mat4.translate(camera, camera, [0, 0, -4000]);
     scene.setCamera(camera);
 
     loadModel("faceship.bmd", function(bmd) {
