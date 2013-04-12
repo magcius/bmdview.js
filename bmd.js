@@ -750,35 +750,27 @@ function parseTEX1(bmd, stream, offset, size) {
 function parseBMD(stream) {
 	stream.pos = 0x20; // skip header
 
-    var parseFuncs = {
-        'INF1': parseINF1,
-        'VTX1': parseVTX1,
-        'EVP1': parseEVP1,
-        'DRW1': parseDRW1,
-        'JNT1': parseJNT1,
-        'SHP1': parseSHP1,
-        'MAT3': parseMAT3,
-        'TEX1': parseTEX1,
-    };
-
-    function parseEntry(bmd) {
+    function parseEntry(tag, func) {
         var offset = stream.pos;
-        var tag = readString(stream, 4);
+        var readTag = readString(stream, 4);
+        if (tag != readTag)
+            throw new Error("Bad data: got " + readTag + " for " + tag);
         var size = readLong(stream);
 
-        var func = parseFuncs[tag];
-        if (!func)
-            throw new Error("Unknown tag: " + tag);
         var entry = func(bmd, stream, offset, size);
-        bmd[tag.toLowerCase()] = entry;
+        stream.pos = offset + size;
         return entry;
     }
 
     var bmd = {};
-    while (!eof(stream)) {
-        var entry = parseEntry(bmd);
-        stream.pos = entry.offset + entry.size;
-    }
+    bmd.inf1 = parseEntry("INF1", parseINF1);
+    bmd.vtx1 = parseEntry("VTX1", parseVTX1);
+    bmd.evp1 = parseEntry("EVP1", parseEVP1);
+    bmd.drw1 = parseEntry("DRW1", parseDRW1);
+    bmd.jnt1 = parseEntry("JNT1", parseJNT1);
+    bmd.shp1 = parseEntry("SHP1", parseSHP1);
+    bmd.mat3 = parseEntry("MAT3", parseMAT3);
+    bmd.tex1 = parseEntry("TEX1", parseTEX1);
 
     // Try and trash the giant arrays that aren't needed anymore.
     delete bmd.vtx1;
