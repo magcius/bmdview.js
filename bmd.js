@@ -122,6 +122,9 @@ function parseVTX1(bmd, stream, offset, size) {
         format.dataType = readLong(stream);
         format.decimalPoint = readByte(stream);
         stream.pos += 3; // unk
+
+        format.scale = Math.pow(0.5, format.decimalPoint);
+
         return format;
     }
 
@@ -132,11 +135,10 @@ function parseVTX1(bmd, stream, offset, size) {
         var data;
         switch (format.dataType) {
             case 3: // s16 fixed point
-                var scale = Math.pow(0.5, format.decimalPoint);
                 length /= 2;
                 data = new Float32Array(length);
                 for (var i = 0; i < length; i++)
-                    data[i] = readSWord(stream) * scale;
+                    data[i] = readSWord(stream) * format.scale;
                 break;
             case 4: // f32
                 length /= 4;
