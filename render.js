@@ -529,6 +529,9 @@ function translateBatch(gl, batch, bmd, material) {
         return r;
     }
 
+    if (batch.matrixType != 0)
+        console.warn("Unsupported matrix type in batch");
+
     var buffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
     gl.bufferData(gl.ARRAY_BUFFER, batch.verts, gl.STATIC_DRAW);

@@ -495,6 +495,9 @@ function parseSHP1(bmd, stream, offset, size) {
             if (index == 0xFFFF)
                 return -1;
 
+            if (bmd.drw1.isWeighted[index])
+                console.warn("Matrix weights are unsupported");
+
             // XXX -- handle weights. Should be in here or in the shader?
             return bmd.drw1.data[index];
         });
