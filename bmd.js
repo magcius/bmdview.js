@@ -109,11 +109,6 @@ function parseVTX1(bmd, stream, offset, size) {
     var vtx1 = { offset: offset, size: size };
     vtx1.arrayFormatOffset = readLong(stream);
     vtx1.offsets = collect(stream, readLong, 13);
-    var numArrays = 0;
-    vtx1.offsets.forEach(function(x) {
-        if (x != 0)
-            numArrays++;
-    });
 
     function getItemSize(format) {
         switch (format.arrayType) {
@@ -150,14 +145,16 @@ function parseVTX1(bmd, stream, offset, size) {
 
     }
 
-    function parseArrayFormat() {
+    function parseArrayFormat(stream, offset) {
         var format = {};
+
         format.arrayType = readLong(stream);
         format.componentCount = readLong(stream);
         format.dataType = readLong(stream);
         format.decimalPoint = readByte(stream);
         stream.pos += 3; // unk
 
+        format.globalOffset = vtx1.offset + offset;
         format.scale = Math.pow(0.5, format.decimalPoint);
         format.itemSize = getItemSize(format);
 
@@ -165,7 +162,14 @@ function parseVTX1(bmd, stream, offset, size) {
     }
 
     stream.pos = vtx1.offset + vtx1.arrayFormatOffset;
-    vtx1.arrayFormats = collect(stream, parseArrayFormat, numArrays);
+    vtx1.arrayFormats = [];
+    vtx1.offsets.forEach(function(offset) {
+        if (offset == 0)
+            return;
+
+        var format = parseArrayFormat(stream, offset);
+        vtx1.arrayFormats.push(format);
+    });
 
     function readArray(stream, format, length) {
         var data;
@@ -204,7 +208,7 @@ function parseVTX1(bmd, stream, offset, size) {
         var itemSize, arr;
         var arr = {};
 
-        stream.pos = vtx1.offset + vtx1.offsets[i];
+        stream.pos = format.globalOffset;
         arr.data = readArray(stream, format, length);
         arr.itemSize = format.itemSize;
         vtx1.arrays[format.arrayType] = arr;
