@@ -115,6 +115,41 @@ function parseVTX1(bmd, stream, offset, size) {
             numArrays++;
     });
 
+    function getItemSize(format) {
+        switch (format.arrayType) {
+            case 0x09:  // positions
+                if (format.componentCount == 0) // xy
+                    return 2;
+                else if (format.componentCount == 1) // xyz
+                    return 3;
+                break;
+            case 0x0A: // normals
+                    return 3;
+                break;
+            case 0x0B: // color0
+            case 0x0C: // color1
+                if (format.componentCount == 0) // rgb
+                    return 3;
+                else if (format.componentCount == 1) // rgba
+                    return 4;
+                break;
+            case 0x0D: // tex coords
+            case 0x0E:
+            case 0x0F:
+            case 0x10:
+            case 0x11:
+            case 0x12:
+            case 0x13:
+            case 0x14:
+                if (format.componentCount == 0) // s
+                    return 1;
+                else if (format.componentCount == 1) // st
+                    return 2;
+                break;
+        }
+
+    }
+
     function parseArrayFormat() {
         var format = {};
         format.arrayType = readLong(stream);
@@ -124,6 +159,7 @@ function parseVTX1(bmd, stream, offset, size) {
         stream.pos += 3; // unk
 
         format.scale = Math.pow(0.5, format.decimalPoint);
+        format.itemSize = getItemSize(format);
 
         return format;
     }
@@ -166,43 +202,11 @@ function parseVTX1(bmd, stream, offset, size) {
         var format = vtx1.arrayFormats[j];
 
         var itemSize, arr;
-        switch (format.arrayType) {
-            case 0x09:  // positions
-                if (format.componentCount == 0) // xy
-                    itemSize = 2;
-                else if (format.componentCount == 1) // xyz
-                    itemSize = 3;
-                break;
-            case 0x0A: // normals
-                    itemSize = 3;
-                break;
-            case 0x0B: // color0
-            case 0x0C: // color1
-                if (format.componentCount == 0) // rgb
-                    itemSize = 3;
-                else if (format.componentCount == 1) // rgba
-                    itemSize = 4;
-                break;
-            case 0x0D: // tex coords
-            case 0x0E:
-            case 0x0F:
-            case 0x10:
-            case 0x11:
-            case 0x12:
-            case 0x13:
-            case 0x14:
-                if (format.componentCount == 0) // s
-                    itemSize = 1;
-                else if (format.componentCount == 1) // st
-                    itemSize = 2;
-                break;
-        }
-
         var arr = {};
 
         stream.pos = vtx1.offset + vtx1.offsets[i];
         arr.data = readArray(stream, format, length);
-        arr.itemSize = itemSize;
+        arr.itemSize = format.itemSize;
         vtx1.arrays[format.arrayType] = arr;
 
         j++;
