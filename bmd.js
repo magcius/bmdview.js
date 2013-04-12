@@ -173,17 +173,19 @@ function parseVTX1(bmd, stream, offset, size) {
     }
 
     stream.pos = vtx1.offset + vtx1.arrayFormatOffset;
-    vtx1.arrayFormats = [];
-    vtx1.offsets.forEach(function(offset) {
+    vtx1.formats = {};
+    vtx1.offsets.forEach(function(offset, i) {
         if (offset == 0)
             return;
 
         var format = parseArrayFormat(stream, offset);
-        vtx1.arrayFormats.push(format);
+        vtx1.formats[format.attrib] = format;
+
+        format.sectionLength = getSectionLength(vtx1, i);
     });
 
-    function readArray(stream, format, length) {
-        length /= format.dataTypeSize;
+    function readArray(stream, format) {
+        var length = format.sectionLength / format.dataTypeSize;
         var data = new Float32Array(length);
         switch (format.dataType) {
             case 3: // s16 fixed point
@@ -205,23 +207,14 @@ function parseVTX1(bmd, stream, offset, size) {
 
     vtx1.arrays = {};
 
-    for (var i = 0, j = 0; i < 13; i++) {
-        if (vtx1.offsets[i] == 0)
-            continue;
-
-        var length = getSectionLength(vtx1, i);
-        var format = vtx1.arrayFormats[j];
-
-        var itemSize, arr;
+    Object.keys(vtx1.formats).forEach(function(attrib) {
+        var format = vtx1.formats[attrib];
         var arr = {};
-
         stream.pos = format.globalOffset;
-        arr.data = readArray(stream, format, length);
+        arr.data = readArray(stream, format);
         arr.itemSize = format.itemSize;
         vtx1.arrays[format.attrib] = arr;
-
-        j++;
-    }
+    });
 
     return vtx1;
 }
