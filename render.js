@@ -14,6 +14,7 @@ function createScene(gl) {
 
     function renderModel(model) {
         var matrices = [];
+        var material;
         for (var i = 0; i < 10; i++)
             matrices.push(mat4.create());
 
@@ -21,8 +22,12 @@ function createScene(gl) {
             matrices[command.idx] = command.matrix;
         }
 
+        function command_updateMaterial(command) {
+            material = command;
+        }
+
         function command_draw(command) {
-            var prog = command.program;
+            var prog = material.program;
             gl.useProgram(prog);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, command.buffer);
@@ -31,6 +36,9 @@ function createScene(gl) {
             var attribs = command.attribs;
             attribs.forEach(function(attrib) {
                 var name = attrib.name;
+                if (prog.locations[name] === undefined)
+                    return; // TODO: this attribute
+
                 gl.vertexAttribPointer(
                     prog.locations[name],          // location
                     attrib.size,                   // size
@@ -75,12 +83,17 @@ function createScene(gl) {
             });
 
             attribs.forEach(function(attrib) {
-                gl.disableVertexAttribArray(prog.locations[attrib.name]);
+                var name = attrib.name;
+                if (prog.locations[name] === undefined)
+                    return; // TODO: this attribute
+
+                gl.disableVertexAttribArray(prog.locations[name]);
             });
         }
 
         var dispatch = {
             "draw": command_draw,
+            "updateMaterial": command_updateMaterial,
             "updateMatrix": command_updateMatrix,
         };
 
@@ -517,7 +530,7 @@ function generateMaterialProgram(gl, bmd, material) {
     return prog;
 }
 
-function translateBatch(gl, bmd, batch, material) {
+function translateBatch(gl, bmd, batch) {
     var command = { type: "draw" };
 
     function range(end) {
@@ -540,23 +553,22 @@ function translateBatch(gl, bmd, batch, material) {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, range(batch.vertCount), gl.STATIC_DRAW);
     command.elementBuffer = elementBuffer;
 
-    command.program = generateMaterialProgram(gl, bmd, material);
     command.itemSize = batch.itemSize;
     command.packets = batch.packets;
-    command.attribs = batch.attribs.filter(function(attrib) {
-        if (command.program.locations[attrib.name] === undefined)
-            return false; // TODO: this attribute
-        return true;
-    });
+    command.attribs = batch.attribs;
 
+    return command;
+}
+
+function translateMaterial(gl, bmd, material) {
+    var command = { type: "updateMaterial" };
+    command.program = generateMaterialProgram(gl, bmd, material);
     return command;
 }
 
 function modelFromBmd(gl, bmd) {
     var model = {};
     model.commands = [];
-
-    var material;
 
     bmd.inf1.entries.forEach(function(entry) {
         switch (entry.type) {
@@ -569,11 +581,12 @@ function modelFromBmd(gl, bmd) {
                 break;
             case 0x11: // material, TODO
                 var index = bmd.mat3.indexToMatIndex[entry.index];
-                material = bmd.mat3.materials[index];
+                var material = bmd.mat3.materials[index];
+                model.commands.push(translateMaterial(gl, bmd, material));
                 break;
             case 0x12: // batch
                 var batch = bmd.shp1.batches[entry.index];
-                model.commands.push(translateBatch(gl, bmd, batch, material));
+                model.commands.push(translateBatch(gl, bmd, batch));
                 break;
         }
     });
