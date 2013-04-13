@@ -121,14 +121,11 @@ function glslCall(name, args) {
 }
 
 function getKonstIdName(id) {
-    return "konst" + id;
+    return "c_color" + id;
 }
 
 function getRegIdName(id) {
-    if (id == 0)
-        return "gl_FragColor";
-    else
-        return "r_color" + (id - 1);
+    return "r_color" + id;
 }
 
 function getTexAccess(info) {
@@ -288,21 +285,22 @@ function getOp(op, bias, scale, clamp, regId, ins, type) {
 
 function getAlphaCompareComponent(comp, ref) {
     var refStr = glslValue(ref / 255);
+    var varName = getRegIdName(0) + ".a";
     switch (comp) {
         case 0: // GX_NEVER
             return "false";
         case 1: // GX_LESS
-            return "gl_FragColor.a < " + refStr;
+            return varName + " < " + refStr;
         case 2: // GX_EQUAL
-            return "gl_FragColor.a == " + refStr;
+            return varName + " == " + refStr;
         case 3: // GX_LEQUAL
-            return "gl_FragColor.a <= " + refStr;
+            return varName + " <= " + refStr;
         case 4: // GX_GREATER
-            return "gl_FragColor.a > " + refStr;
+            return varName + " > " + refStr;
         case 5: // GX_NEQUAL
-            return "gl_FragColor.a != " + refStr;
+            return varName + " != " + refStr;
         case 6: // GX_GEQUAL
-            return "gl_FragColor.a >= " + refStr;
+            return varName + " >= " + refStr;
         case 7: // GX_ALWAYS
             return "true";
         default:
@@ -447,7 +445,10 @@ function generateBatchFragShader(batch, bmd, material) {
         main.push("");
     }
 
-    main.push.apply(main,getAlphaCompare(mat3.alphaCompares[material.alphaCompIndex]));
+    main.push.apply(main, getAlphaCompare(mat3.alphaCompares[material.alphaCompIndex]));
+
+    main.push("");
+    main.push("gl_FragColor = " + getRegIdName(0) + ";");
 
     // Declare constants
     needKonst.forEach(function(x, i) {
@@ -460,11 +461,15 @@ function generateBatchFragShader(batch, bmd, material) {
 
     // Declare registers
     needReg.forEach(function(x, i) {
-        if (i == 0 || !x)
+        if (!x)
             return;
 
-        var color = mat3.colorS10[material.colorS10[i - 1]];
-        init.push("vec4 " + getRegIdName(i) + " = " + colorVec(color) + ";");
+        var decl = "vec4 " + getRegIdName(i);
+        if (i > 0) {
+            var color = mat3.colorS10[material.colorS10[i - 1]];
+            decl += " = " + colorVec(color);
+        }
+        init.push(decl + ";");
     });
 
     var decls = [];
