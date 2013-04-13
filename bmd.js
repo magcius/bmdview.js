@@ -545,10 +545,6 @@ function parseSHP1(bmd, stream, offset, size) {
     return shp1;
 }
 
-function parseDummy(bmd, stream, offset, size) {
-    return { offset: offset, size: size };
-}
-
 function parseMAT3(bmd, stream, offset, size) {
     var mat3 = { offset: offset, size: size };
     mat3.count = readWord(stream);
@@ -729,7 +725,301 @@ function parseMAT3(bmd, stream, offset, size) {
 }
 
 function parseTEX1(bmd, stream, offset, size) {
-    return parseDummy(bmd, stream, offset, size);
+    var tex1 = { offset: offset, size: size };
+
+    function parseTextureHeader(stream, i) {
+        var texture = {};
+        texture.format = readByte(stream);
+        stream.pos += 1; // unk
+        texture.width = readWord(stream);
+        texture.height = readWord(stream);
+        texture.wrapS = readByte(stream);
+        texture.wrapT = readByte(stream);
+        stream.pos += 1; // unk
+        texture.paletteFormat = readByte(stream);
+        texture.paletteNumEntries = readWord(stream);
+        texture.paletteOffset = readLong(stream);
+        stream.pos += 4; // unk
+        texture.minFilter = readByte(stream);
+        texture.magFilter = readByte(stream);
+        stream.pos += 2; // unk
+        texture.mipmapCount = readByte(stream);
+        stream.pos += 3; // unk
+        texture.dataOffset = readLong(stream);
+
+        texture.baseOffset = tex1.offset + tex1.textureHeaderOffset + 0x20*i;
+        texture.name = tex1.nameTable[i];
+        return texture;
+    }
+
+    tex1.count = readWord(stream);
+    stream.pos += 2; // unk
+    tex1.textureHeaderOffset = readLong(stream);
+    tex1.stringTableOffset = readLong(stream);
+
+    stream.pos = tex1.offset + tex1.stringTableOffset;
+    tex1.nameTable = parseStringTable(stream);
+
+    stream.pos = tex1.offset + tex1.textureHeaderOffset;
+    var textureHeaders = collect(stream, parseTextureHeader, tex1.count);
+
+    function getCompressedBufferSize(format, w, h) {
+        var w8 = (w + 7) & ~7;
+        var h8 = (h + 7) & ~7;
+        var w4 = (w + 3) & ~3;
+        var h4 = (h + 3) & ~3;
+
+        switch(format)  {
+
+            case 0x00: // I4
+                return w8 * h8 / 2;
+            case 0x01: // I8
+                return w8 * h8;
+            case 0x02: // A4_I4
+                return w8 * h4;
+            case 0x03: // A8_I8
+                return w4 * h4 * 2;
+            case 0x04: // R5_G6_B5
+                return w4 * h4 * 2;
+            case 0x05: // A3_RGB5
+                return w4 * h4 * 2;
+            case 0x06: // ARGB8
+                return w4 * h4 * 4;
+            case 0x08: // INDEX4
+                return w8 * h8 / 2;
+            case 0x09: // INDEX8
+                return w8 * h8;
+            case 0x0A: // INDEX14_X2
+                return w8 * h8 * 2;
+            case 0x0E: // S3TC
+                return w4 * h4 / 2;
+        }
+        console.warn("Unknown texture format");
+        return -1;
+    }
+
+    function getUncompressedBufferFormat(format, paletteFormat) {
+        switch (format) {
+            case 0x00: // I4
+            case 0x01: // I8
+                return "i8";
+            case 0x02: // A4_I4
+            case 0x03: // A8_I8
+                return "i8_a8";
+            case 0x04: // R5_G6_B5
+            case 0x05: // A3_RGB5
+            case 0x06: // ARGB8
+                return "rgba8";
+            case 0x08: // INDEX4
+            case 0x09: // INDEX8
+            case 0x0A: // INDEX14_X2
+                switch (paletteFormat) {
+                    case 0x00: // PAL_A8_I8
+                        return "i8_a8";
+                    case 0x01: // PAL_R5_G6_B5
+                    case 0x02: // PAL_A3_RGB5
+                        return "rgba8";
+                }
+                break;
+            case 0x0E: // S3TC
+                return "dxt1";
+        }
+
+        return null;
+    }
+
+    function getUncompressedBufferSize(format, w, h) {
+        switch (format) {
+            case "i8":
+                return w * h;
+            case "i8_a8":
+                return w * h * 2;
+            case "rgba8":
+                return w * h * 4;
+            case "dxt1":
+                // Round to the nearest multiple of four.
+                var w4 = (w + 3) & ~3;
+                var h4 = (h + 3) & ~3;
+                return w4 * h4 / 2;
+        }
+
+        return null;
+    }
+
+    function rgb5a3(dst, dstOffs, pixel) {
+        // http://www.mindcontrol.org/~hplus/graphics/expand-bits.html
+        var r, g, b, a;
+        if ((pixel & 0x8000) == 0x8000) { // RGBA5
+            a = 0xff;
+
+            r = (pixel & 0x7c00) >> 10;
+            r = (r << (8-5)) | (r >> (10-8));
+
+            g = (pixel & 0x3e0) >> 5;
+            g = (g << (8-5)) | (g >> (10-8));
+
+            b = pixel & 0x1f;
+            b = (b << (8-5)) | (b >> (10-8));
+        } else { //a3rgb4
+            a = (pixel & 0x7000) >> 12;
+            a = (a << (8-3)) | (a << (8-6)) | (a >> (9-8));
+
+            r = (pixel & 0xf00) >> 8;
+            r = (r << (8-4)) | r;
+
+            g = (pixel & 0xf0) >> 4;
+            g = (g << (8-4)) | g;
+
+            b = pixel & 0xf;
+            b = (b << (8-4)) | b;
+        }
+
+        dst[dstOffs+0] = r;
+        dst[dstOffs+1] = g;
+        dst[dstOffs+2] = b;
+        dst[dstOffs+3] = a;
+    }
+
+    function readI4(dst, src, w, h) {
+        var si = 0;
+
+        for (var y = 0; y < h; y += 8)
+            for (var x = 0; x < w; x += 8)
+                for (var dy = 0; dy < 8; dy++)
+                    for (var dx = 0; dx < 8; dx += 2) {
+                        // http://www.mindcontrol.org/~hplus/graphics/expand-bits.html
+                        var t;
+                        t = (src[si] & 0xF0);
+                        dst[w*(y + dy) + x + dx] = t | (t >> 4);
+                        t = (src[si] & 0x0F);
+                        dst[w*(y + dy) + x + dx + 1] = (t << 4) | t;
+                        ++si;
+                    }
+    }
+
+    function readI8(dst, src, w, h) {
+        var si = 0;
+
+        for (var y = 0; y < h; y += 4)
+            for (var x = 0; x < w; x += 8)
+                for (var dy = 0; dy < 4; dy++)
+                    for (var dx = 0; dx < 8; dx++, si++)
+                        dst[w*(y + dy) + x + dx] = src[si];
+    }
+
+    function readA4_I4(dst, src, w, h) {
+        console.warn("Unsupported texture: A4_I4");
+    }
+
+    function readA8_I8(dst, src, w, h) {
+        console.warn("Unsupported texture: A8_I8");
+    }
+
+    function readR5_G6_B5(dst, src, w, h) {
+        console.warn("Unsupported texture: R5_G6_B5");
+    }
+
+    function readA3_RGB5(dst, src, w, h) {
+        var si = 0;
+        for (var y = 0; y < h; y += 4)
+            for (var x = 0; x < w; x += 4)
+                for (var dy = 0; dy < 4; dy++)
+                    for (var dx = 0; dx < 4; dx++) {
+                        var srcPixel = src[si] << 8 | src[si + 1];
+                        var dstOffs = 4*(w*(y + dy) + x + dx);
+                        rgb5a3(dst, dstOffs, srcPixel);
+                        si += 2;
+                    }
+    }
+
+    function readARGB8(dst, src, w, h) {
+        console.warn("Unsupported texture: ARGB8");
+    }
+
+    function readS3TC1(dst, src, w, h) {
+        function reverseByte(b) {
+            var b1 = b & 0x3;
+            var b2 = b & 0xc;
+            var b3 = b & 0x30;
+            var b4 = b & 0xc0;
+            return (b1 << 6) | (b2 << 2) | (b3 >> 2) | (b4 >> 6);
+        }
+
+        var si = 0;
+        for (var y = 0; y < h / 4; y += 2)
+            for (var x = 0; x < w / 4; x += 2)
+                for (var dy = 0; dy < 2; dy++)
+                    for (var dx = 0; dx < 2; dx++) {
+                        var dstOffs = 8*((y + dy)*w/4 + x + dx);
+
+                        dst[dstOffs+0] = src[si+1];
+                        dst[dstOffs+1] = src[si+0];
+                        dst[dstOffs+2] = src[si+3];
+                        dst[dstOffs+3] = src[si+2];
+
+                        dst[dstOffs+4] = reverseByte(src[si+4]);
+                        dst[dstOffs+5] = reverseByte(src[si+5]);
+                        dst[dstOffs+6] = reverseByte(src[si+6]);
+                        dst[dstOffs+7] = reverseByte(src[si+7]);
+                        si += 8;
+                    }
+    }
+
+    function readImage(dst, src, palette, w, h, format) {
+        switch (format) {
+            case 0x00: // I4
+                return readI4(dst, src, w, h);
+            case 0x01: // I8
+                return readI8(dst, src, w, h);
+            case 0x02: // A4_I4
+                return readA4_I4(dst, src, w, h);
+            case 0x03: // A8_I8
+                return readA8_I8(dst, src, w, h);
+            case 0x04: // R5_G6_B5
+                return readR5_G6_B5(dst, src, w, h);
+            case 0x05: // A3_RGB5
+                return readA3_RGB5(dst, src, w, h);
+            case 0x06: // ARGB8
+                return readARGB8(dst, src, w, h);
+            case 0x0E: // S3TC1
+                return readS3TC1(dst, src, w, h);
+            default:
+                console.warn("Unsupported texture", format);
+        }
+    }
+
+    function parseTexture(header, xx) {
+        // XXX -- what to do?
+        if (header.dataFormat == 0)
+            return null;
+
+        var palette = null;
+        if (header.paletteNumEntries != 0)
+            palette = new Uint8Array(stream.buffer, header.baseOffset + header.paletteOffset, header.paletteNumEntries * 2);
+
+        // TODO: mipmaps
+        var w = header.width, h = header.height;
+        var uncompressedBufferFormat = getUncompressedBufferFormat(header.format, header.paletteFormat);
+        if (uncompressedBufferFormat == null)
+            return null;
+
+        var uncompressedBufferSize = getUncompressedBufferSize(uncompressedBufferFormat, w, h);
+        var dst = new Uint8Array(uncompressedBufferSize);
+
+        var compressedBufferSize = getCompressedBufferSize(header.format, w, h);
+        var src = new Uint8Array(stream.buffer, header.baseOffset + header.dataOffset, compressedBufferSize);
+
+        readImage(dst, src, palette, w, h, header.format);
+
+        return { pixels: dst,
+                 width: w,
+                 height: h,
+                 format: uncompressedBufferFormat };
+    }
+
+    tex1.textures = textureHeaders.map(parseTexture);
+
+    return tex1;
 }
 
 function parseBMD(stream) {
@@ -763,7 +1053,8 @@ function parseBMD(stream) {
 function loadModel(filename, callback) {
     var req = fetch(filename);
     req.onload = function(trackerFile) {
-        var bmd = parseBMD(makeStream(req.response));
-        callback(bmd);
+        var stream = makeStream(req.response);
+        var bmd = parseBMD(stream);
+        callback(stream, bmd);
     };
 }

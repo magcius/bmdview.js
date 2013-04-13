@@ -696,9 +696,124 @@ function translateMaterial(gl, bmd, material) {
     return command;
 }
 
-function modelFromBmd(gl, bmd) {
+function r5g6b5(dst, dstOffs, pixel) {
+    var r, g, b;
+    r = (pixel & 0xF100) >> 11;
+    g = (pixel & 0x07E0) >> 5;
+    b = (pixel & 0x001F);
+
+    // http://www.mindcontrol.org/~hplus/graphics/expand-bits.html
+    r = (r << (8 - 5)) | (r >> (10 - 8));
+    g = (g << (8 - 6)) | (g >> (12 - 8));
+    b = (b << (8 - 5)) | (b >> (10 - 8));
+
+    dst[dstOffs+0] = r;
+    dst[dstOffs+1] = g;
+    dst[dstOffs+2] = b;
+    dst[dstOffs+3] = 0xFF;
+}
+
+function decompressDXT1(texture, dst) {
+    var runner = 0;
+    var h = texture.height, w = texture.width, p = texture.pixels;
+
+    function word(a) {
+        return p[a] | (p[a+1] << 8);
+    }
+
+    function dword(a) {
+        return p[a] | (p[a+1] << 8) | (p[a+2] << 16) | (p[a+3] << 24);
+    }
+
+    var colorTable = new Uint8Array(16);
+    for(var y = 0; y < h; y += 4) {
+        for(var x = 0; x < w; x += 4) {
+            var color1 = word(runner);
+            var color2 = word(runner + 2);
+            var bits = dword(runner + 4);
+            runner += 8;
+
+            r5g6b5(colorTable, 0, color1);
+            r5g6b5(colorTable, 4, color2);
+
+            if (color1 > color2) {
+                colorTable[8+0] = (2*colorTable[0+0] + colorTable[4+0] + 1) / 3;
+                colorTable[8+1] = (2*colorTable[0+1] + colorTable[4+1] + 1) / 3;
+                colorTable[8+2] = (2*colorTable[0+2] + colorTable[4+2] + 1) / 3;
+                colorTable[8+3] = 0xFF;
+
+                colorTable[12+0] = (colorTable[0+0] + 2*colorTable[4+0] + 1) / 3;
+                colorTable[12+1] = (colorTable[0+1] + 2*colorTable[4+1] + 1) / 3;
+                colorTable[12+2] = (colorTable[0+2] + 2*colorTable[4+2] + 1) / 3;
+                colorTable[12+3] = 0xFF;
+            } else {
+                colorTable[8+0] = (colorTable[0+0] + colorTable[4+0] + 1) / 2;
+                colorTable[8+1] = (colorTable[0+1] + colorTable[4+1] + 1) / 2;
+                colorTable[8+2] = (colorTable[0+2] + colorTable[4+2] + 1) / 2;
+                colorTable[8+3] = 0xFF;
+
+                //only the alpha value of this color is important...
+                colorTable[12+0] = (colorTable[0+0] + 2*colorTable[4+0] + 1) / 3;
+                colorTable[12+1] = (colorTable[0+1] + 2*colorTable[4+1] + 1) / 3;
+                colorTable[12+2] = (colorTable[0+2] + 2*colorTable[4+2] + 1) / 3;
+                colorTable[12+3] = 0x00;
+            }
+
+            for (var iy = 0; iy < 4; ++iy)
+                for (var ix = 0; ix < 4; ++ix) {
+                    var di = 4*((y + iy)*w + x + ix);
+                    var si = bits & 0x03;
+                    dst[di+0] = colorTable[si*4+0];
+                    dst[di+1] = colorTable[si*4+1];
+                    dst[di+2] = colorTable[si*4+2];
+                    dst[di+3] = colorTable[si*4+3];
+                    bits >>= 2;
+              }
+        }
+    }
+}
+
+function textureToCanvas(texture) {
+    var canvas = document.createElement("canvas");
+    canvas.width = texture.width;
+    canvas.height = texture.height;
+
+    var ctx = canvas.getContext("2d");
+    var imgData = ctx.createImageData(canvas.width, canvas.height);
+
+    if (texture.format == "i8") {
+        for (var si = 0, di = 0; di < imgData.data.length; si++, di += 4) {
+            imgData.data[di+0] = texture.pixels[si];
+            imgData.data[di+1] = texture.pixels[si];
+            imgData.data[di+2] = texture.pixels[si];
+            imgData.data[di+3] = 255;
+        }
+    } else if (texture.format == "rgba8") {
+        for (var i = 0; i < imgData.data.length; i++)
+            imgData.data[i] = texture.pixels[i];
+    } else if (texture.format == "dxt1") {
+        decompressDXT1(texture, imgData.data);
+    }
+
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+}
+
+// Set by checkExtensions
+var COMPRESSED_RGB_S3TC_DXT1_EXT = null;
+
+function translateTexture(gl, bmd, texture) {
+    var canvas = textureToCanvas(texture);
+    document.body.appendChild(canvas);
+}
+
+function modelFromBmd(gl, stream, bmd) {
     var model = {};
     model.commands = [];
+
+    model.textures = bmd.tex1.textures.map(function(tex) {
+        return translateTexture(gl, bmd, tex);
+    });
 
     bmd.inf1.entries.forEach(function(entry) {
         switch (entry.type) {
@@ -724,19 +839,37 @@ function modelFromBmd(gl, bmd) {
     return model;
 }
 
+function checkExtensions(gl) {
+    var extensions = gl.getSupportedExtensions();
+    var s3tcExts = extensions.filter(function(name) {
+        return /compressed_texture_s3tc$/.test(name);
+    });
+    if (!s3tcExts[0])
+        return;
+
+    var extension = gl.getExtension(s3tcExts[0]);
+    var dxt1 = extension.COMPRESSED_RGB_S3TC_DXT1_EXT;
+    if (!dxt1)
+        return;
+
+    COMPRESSED_RGB_S3TC_DXT1_EXT = dxt1;
+}
+
 window.addEventListener('load', function() {
     var canvas = document.querySelector("canvas");
     var gl = canvas.getContext("experimental-webgl");
     gl.viewportWidth = canvas.width;
     gl.viewportHeight = canvas.height;
 
+    checkExtensions(gl);
+
     var scene = createScene(gl);
     var camera = mat4.create();
     mat4.translate(camera, camera, [0, 0, -4000]);
     scene.setCamera(camera);
 
-    loadModel("faceship.bmd", function(bmd) {
-        var model = modelFromBmd(gl, bmd);
+    loadModel("faceship.bmd", function(stream, bmd) {
+        var model = modelFromBmd(gl, stream, bmd);
         scene.attachModel(model);
     });
 
