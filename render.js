@@ -548,10 +548,12 @@ function translateBatch(gl, batch, bmd, material) {
     command.packets = batch.packets;
     command.attribSizes = batch.attribSizes;
     command.attribOffs = batch.attribOffs;
-    command.attribNames = Object.keys(batch.attribNames).filter(function(name) {
+    command.attribNames = [];
+    batch.attribs.forEach(function(attrib) {
+        var name = attrib.name;
         if (command.program.attribNames.indexOf(name) < 0)
-            return false; // TODO: this attribute
-        return true;
+            return; // TODO: this attribute
+        command.attribNames.push(name);
     });
 
     return command;
