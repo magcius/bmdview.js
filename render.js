@@ -546,13 +546,15 @@ function translateBatch(gl, batch, bmd, material) {
     command.program = generateBatchProgram(gl, bmd, material);
     command.itemSize = batch.itemSize;
     command.packets = batch.packets;
-    command.attribSizes = batch.attribSizes;
-    command.attribOffs = batch.attribOffs;
+    command.attribSizes = {};
+    command.attribOffs = {};
     command.attribNames = [];
     batch.attribs.forEach(function(attrib) {
         var name = attrib.name;
         if (command.program.attribNames.indexOf(name) < 0)
             return; // TODO: this attribute
+        command.attribSizes[name] = attrib.size;
+        command.attribOffs[name] = attrib.offset;
         command.attribNames.push(name);
     });
 

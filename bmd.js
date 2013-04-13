@@ -363,8 +363,6 @@ function parseSHP1(bmd, stream, offset, size) {
 
     function parseAttribs(stream) {
         var attribs = [];
-        var attribOffs = {};
-        var attribSizes = {};
         var offs = 0;
         var byteSize = 0;
 
@@ -388,16 +386,14 @@ function parseSHP1(bmd, stream, offset, size) {
             var size = bmd.vtx1.formats[attrib.attrib].itemSize;
 
             attrib.name = name;
+            attrib.size = size;
+            attrib.offset = offs;
 
-            attribOffs[name] = offs;
-            attribSizes[name] = size;
             offs += size;
 
             attribs.push(attrib);
         } while(true);
 
-        attribs.attribOffs = attribOffs;
-        attribs.attribSizes = attribSizes;
         attribs.byteSize = byteSize;
         attribs.itemSize = offs;
         return attribs;
@@ -521,8 +517,6 @@ function parseSHP1(bmd, stream, offset, size) {
         // parse attribs
         stream.pos = shp1.offset + shp1.offsetToBatchAttribs + batch.offsetToAttribs;
         batch.attribs = parseAttribs(stream);
-        batch.attribSizes = batch.attribs.attribSizes;
-        batch.attribOffs = batch.attribs.attribOffs;
         batch.itemSize = batch.attribs.itemSize;
         batch.byteSize = batch.attribs.byteSize;
 
