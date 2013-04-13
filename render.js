@@ -484,7 +484,13 @@ function generateFragShader(bmd, material) {
     main.push.apply(main, getAlphaCompare(mat3.alphaCompares[material.alphaCompIndex]));
 
     main.push("");
-    main.push("gl_FragColor = " + getRegIdName(0) + ";");
+
+    var blendInfo = bmd.mat3.blendInfos[material.blendIndex];
+    if (blendInfo.blendMode > 0) {
+        main.push("gl_FragColor = " + getRegIdName(0) + ";");
+    } else {
+        main.push("gl_FragColor = vec4(" + getRegIdName(0) + ".rgb, 1.0);");
+    }
 
     // Declare constants
     needKonst.forEach(function(x, i) {
