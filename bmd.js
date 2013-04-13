@@ -184,35 +184,6 @@ function parseVTX1(bmd, stream, offset, size) {
         format.sectionLength = getSectionLength(vtx1, i);
     });
 
-    function readArray(stream, format) {
-        stream.pos = format.globalOffset;
-        var length = format.sectionLength / format.dataTypeSize;
-        var data = new Float32Array(length);
-        switch (format.dataType) {
-            case 3: // s16 fixed point
-                for (var i = 0; i < length; i++)
-                    data[i] = readSWord(stream) * format.scale;
-                break;
-            case 4: // f32
-                for (var i = 0; i < length; i++)
-                    data[i] = readFloat(stream);
-                break;
-            case 5: // rgb(a)
-                for (var i = 0; i < length; i++)
-                    data[i] = readByte(stream) / 255;
-                break;
-        }
-
-        return data;
-    }
-
-    vtx1.arrays = {};
-
-    Object.keys(vtx1.formats).forEach(function(attrib) {
-        var format = vtx1.formats[attrib];
-        vtx1.arrays[format.attrib] = readArray(stream, format);
-    });
-
     return vtx1;
 }
 
@@ -440,7 +411,6 @@ function parseSHP1(bmd, stream, offset, size) {
         for (var i = 0; i < count; i++) {
             batch.attribs.forEach(function(attrib) {
                 var format = bmd.vtx1.formats[attrib.attrib];
-                var src = bmd.vtx1.arrays[attrib.attrib];
                 var size = format.itemSize;
 
                 switch (attrib.dataType) {
@@ -452,8 +422,23 @@ function parseSHP1(bmd, stream, offset, size) {
                         break;
                 }
 
-                memcpy(batch.verts, dstOffs, src, idx * size, size);
-                dstOffs += size;
+                var savedPos = stream.pos;
+                stream.pos = format.globalOffset + (idx * size * format.dataTypeSize);
+                switch (format.dataType) {
+                    case 3: // s16 fixed point
+                        for (var i = 0; i < size; i++)
+                            batch.verts[dstOffs++] = readSWord(stream) * format.scale;
+                        break;
+                    case 4: // f32
+                        for (var i = 0; i < size; i++)
+                            batch.verts[dstOffs++] = readFloat(stream);
+                        break;
+                    case 5: // rgb(a)
+                        for (var i = 0; i < size; i++)
+                            batch.verts[dstOffs++] = readByte(stream) / 255;
+                        break;
+                }
+                stream.pos = savedPos;
             });
         }
     }
@@ -770,9 +755,6 @@ function parseBMD(stream) {
     bmd.shp1 = parseEntry("SHP1", parseSHP1);
     bmd.mat3 = parseEntry("MAT3", parseMAT3);
     bmd.tex1 = parseEntry("TEX1", parseTEX1);
-
-    // Try and trash the giant arrays that aren't needed anymore.
-    delete bmd.vtx1;
 
     return bmd;
 }
