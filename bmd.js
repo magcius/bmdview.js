@@ -566,20 +566,20 @@ function parseMAT3(bmd, stream, offset, size) {
     var maxIndex = Math.max.apply(null, mat3.indexToMatIndex);
 
     function parseColor(stream) {
-        var color = {};
-        color.r = readByte(stream) / 255;
-        color.g = readByte(stream) / 255;
-        color.b = readByte(stream) / 255;
-        color.a = readByte(stream) / 255;
+        var color = [];
+        color.push(readByte(stream) / 255);
+        color.push(readByte(stream) / 255);
+        color.push(readByte(stream) / 255);
+        color.push(readByte(stream) / 255);
         return color;
     }
 
     function parseColorShort(stream) {
-        var color = {};
-        color.r = readSWord(stream) / 255;
-        color.g = readSWord(stream) / 255;
-        color.b = readSWord(stream) / 255;
-        color.a = readSWord(stream) / 255;
+        var color = [];
+        color.push(readSWord(stream) / 255);
+        color.push(readSWord(stream) / 255);
+        color.push(readSWord(stream) / 255);
+        color.push(readSWord(stream) / 255);
         return color;
     }
 

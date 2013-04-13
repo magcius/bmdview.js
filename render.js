@@ -402,8 +402,7 @@ function generateBatchFragShader(batch, bmd, material) {
     }
 
     function colorVec(color) {
-        var args = [color.r, color.g, color.b, color.a];
-        return glslCall("vec4", args);
+        return glslCall("vec4", color);
     }
 
     // Check what we need.
