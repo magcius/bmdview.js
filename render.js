@@ -348,7 +348,7 @@ function generateShader(decls, main) {
 var vertShader = null;
 var fragShaders = {};
 
-function generateBatchVertShader() {
+function generateVertShader() {
     var uniforms = [];
     var varyings = [];
     var attributes = [];
@@ -379,7 +379,7 @@ function generateBatchVertShader() {
     return generateShader(decls, main);
 }
 
-function generateBatchFragShader(bmd, material) {
+function generateFragShader(bmd, material) {
     var mat3 = bmd.mat3;
     var header = [];
     var varyings = [];
@@ -490,15 +490,15 @@ function compileShader(gl, str, type) {
     return shader;
 }
 
-function generateBatchProgram(gl, bmd, material) {
+function generateMaterialProgram(gl, bmd, material) {
     if (!vertShader) {
-        var vert = generateBatchVertShader();
+        var vert = generateVertShader();
         vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
     }
 
     var fragKey = material.index;
     if (!fragShaders[fragKey]) {
-        var frag = generateBatchFragShader(bmd, material);
+        var frag = generateFragShader(bmd, material);
         fragShaders[fragKey] = compileShader(gl, frag, gl.FRAGMENT_SHADER);
     }
 
@@ -521,7 +521,7 @@ function generateBatchProgram(gl, bmd, material) {
     return prog;
 }
 
-function translateBatch(gl, batch, bmd, material) {
+function translateBatch(gl, bmd, batch, material) {
     var command = { type: "draw" };
 
     function range(end) {
@@ -544,7 +544,7 @@ function translateBatch(gl, batch, bmd, material) {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, range(batch.vertCount), gl.STATIC_DRAW);
     command.elementBuffer = elementBuffer;
 
-    command.program = generateBatchProgram(gl, bmd, material);
+    command.program = generateMaterialProgram(gl, bmd, material);
     command.itemSize = batch.itemSize;
     command.packets = batch.packets;
     command.attribs = batch.attribs.filter(function(attrib) {
@@ -577,7 +577,7 @@ function modelFromBmd(gl, bmd) {
                 break;
             case 0x12: // batch
                 var batch = bmd.shp1.batches[entry.index];
-                model.commands.push(translateBatch(gl, batch, bmd, material));
+                model.commands.push(translateBatch(gl, bmd, batch, material));
                 break;
         }
     });
