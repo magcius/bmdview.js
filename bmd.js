@@ -364,7 +364,7 @@ function parseSHP1(bmd, stream, offset, size) {
     function parseAttribs(stream) {
         var attribs = [];
         var attribOffs = {};
-        var itemSize = 0;
+        var offs = 0;
         var byteSize = 0;
 
         do {
@@ -383,14 +383,14 @@ function parseSHP1(bmd, stream, offset, size) {
             else
                 console.warn("Unknown attrib data type", attrib.dataType);
 
-            attribOffs[attribNames[attrib.attrib]] = itemSize;
-            itemSize += bmd.vtx1.formats[attrib.attrib].itemSize;
+            attribOffs[attribNames[attrib.attrib]] = offs;
+            offs += bmd.vtx1.formats[attrib.attrib].itemSize;
             attribs.push(attrib);
         } while(true);
 
         attribs.attribOffs = attribOffs;
         attribs.byteSize = byteSize;
-        attribs.itemSize = itemSize;
+        attribs.itemSize = offs;
         return attribs;
     }
 
