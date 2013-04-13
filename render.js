@@ -11,6 +11,10 @@ function createScene(gl) {
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clearColor(77/255, 50/255, 153/255, 1);
 
+    gl.enable(gl.DEPTH_TEST);
+    gl.enable(gl.CULL_FACE);
+    gl.frontFace(gl.CW);
+
     function renderModel(model) {
         var matrices = [];
         var locations;
@@ -136,6 +140,7 @@ function createScene(gl) {
     var scene = {};
 
     function render() {
+        gl.depthMask(true);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         models.forEach(renderModel);
     }
