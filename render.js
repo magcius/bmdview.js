@@ -10,11 +10,10 @@ function createScene(gl) {
 
     gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
     gl.clearColor(77/255, 50/255, 153/255, 1);
-    gl.enable(gl.DEPTH_TEST);
 
     function renderModel(model) {
         var matrices = [];
-        var material;
+        var locations;
         for (var i = 0; i < 10; i++)
             matrices.push(mat4.create());
 
@@ -23,31 +22,61 @@ function createScene(gl) {
         }
 
         function command_updateMaterial(command) {
-            material = command;
-            gl.useProgram(material.program);
+            gl.useProgram(command.program);
+            locations = command.program.locations;
+
+            function applyBlendInfo(blendInfo) {
+                if (blendInfo.enable) {
+                    gl.enable(gl.BLEND);
+                    gl.blendFunc(blendInfo.src, blendInfo.dst);
+                } else {
+                    gl.disable(gl.BLEND);
+                }
+            }
+
+            function applyCullInfo(cullInfo) {
+                if (cullInfo.enable) {
+                    gl.enable(gl.CULL_FACE);
+                    gl.cullFace(cullInfo.face);
+                } else {
+                    gl.disable(gl.CULL_FACE);
+                }
+            }
+
+            function applyDepthTest(depthTest) {
+                if (depthTest.enable) {
+                    gl.enable(gl.DEPTH_TEST);
+                    gl.depthFunc(depthTest.func);
+                    gl.depthMask(depthTest.mask);
+                } else {
+                    gl.disable(gl.DEPTH_TEST);
+                }
+            }
+
+            applyBlendInfo(command.blendInfo);
+            applyCullInfo(command.cullInfo);
+            applyDepthTest(command.depthTest);
         }
 
         function command_draw(command) {
-            var prog = material.program;
-
             gl.bindBuffer(gl.ARRAY_BUFFER, command.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, command.elementBuffer);
 
             var attribs = command.attribs;
             attribs.forEach(function(attrib) {
                 var name = attrib.name;
-                if (prog.locations[name] === undefined)
+                if (locations[name] === undefined)
                     return; // TODO: this attribute
 
                 gl.vertexAttribPointer(
-                    prog.locations[name],          // location
+                    locations[name],               // location
                     attrib.size,                   // size
                     gl.FLOAT,                      // type
                     false,                         // normalize
                     command.itemSize          * 4, // stride
                     attrib.offset             * 4  // offset
                 );
-                gl.enableVertexAttribArray(prog.locations[name]);
+                gl.enableVertexAttribArray(locations[name]);
             });
 
             var matrixTable = [];
@@ -65,12 +94,12 @@ function createScene(gl) {
                 return updated;
             }
 
-            gl.uniformMatrix4fv(prog.locations.projection, false, projection);
-            gl.uniformMatrix4fv(prog.locations.modelView, false, modelView);
+            gl.uniformMatrix4fv(locations.projection, false, projection);
+            gl.uniformMatrix4fv(locations.modelView, false, modelView);
 
             command.packets.forEach(function(packet) {
                 if (updateMatrixTable(packet))
-                    gl.uniformMatrix4fv(prog.locations.vertexMatrix, false, matrixTable[0]);
+                    gl.uniformMatrix4fv(locations.vertexMatrix, false, matrixTable[0]);
 
                 packet.primitives.forEach(function(prim) {
                     gl.drawElements(
@@ -84,10 +113,10 @@ function createScene(gl) {
 
             attribs.forEach(function(attrib) {
                 var name = attrib.name;
-                if (prog.locations[name] === undefined)
+                if (locations[name] === undefined)
                     return; // TODO: this attribute
 
-                gl.disableVertexAttribArray(prog.locations[name]);
+                gl.disableVertexAttribArray(locations[name]);
             });
         }
 
@@ -563,6 +592,96 @@ function translateBatch(gl, bmd, batch) {
 function translateMaterial(gl, bmd, material) {
     var command = { type: "updateMaterial" };
     command.program = generateMaterialProgram(gl, bmd, material);
+
+    function translateCullMode(cullMode) {
+        var cullInfo = {};
+        switch (cullMode) {
+            case 0: // GX_CULL_NONE
+                cullInfo.enable = false;
+                break;
+            case 1: // GX_CULL_FRONT
+                cullInfo.enable = true;
+                cullInfo.face = gl.FRONT;
+                break;
+            case 2: // GX_CULL_BACK
+                cullInfo.enable = true;l
+                cullInfo.face = gl.BACk;
+                break;
+        }
+        return cullInfo;
+    }
+
+    command.cullInfo = bmd.mat3.cullModes[material.cullIndex];
+
+    function getBlendFunc(blendMode) {
+        switch(blendMode) {
+            case 0: // GX_BL_ZERO
+                return gl.ZERO;
+            case 1: // GX_BL_ONE
+                return gl.ONE;
+            case 2: // GX_BL_SRCCLR / GX_BL_DSTCLR
+                return gl.SRC_COLOR;
+            case 3: // GX_BL_INVSRCCLOR / GX_BL_INVDSTCLR
+                return gl.ONE_MINUS_SRC_COLOR;
+            case 4: // GX_BL_SRCALPHA
+                return gl.SRC_ALPHA;
+            case 5: // GX_BL_INVSRCALPHA
+                return gl.ONE_MINUS_SRC_ALPHA;
+            case 6: // GX_DSTALPHA
+                return gl.DST_ALPHA;
+            case 7: // GX_INVDSTALPHA
+                return gl.ONE_MINUS_DST_ALPHA;
+            default:
+                console.warn("Unknown blend mode ", blendMode);
+                return gl.ONE;
+        }
+    }
+
+    function translateBlendInfo(blendInfo) {
+        var info = {};
+        info.enable = blendInfo.blendMode > 0;
+        info.src = getBlendFunc(blendInfo.srcFactor);
+        info.dst = getBlendFunc(blendInfo.dstFactor);
+        return info;
+    }
+
+    command.blendInfo = translateBlendInfo(bmd.mat3.blendInfos[material.blendIndex]);
+
+    function getDepthFunc(func) {
+        switch (func) {
+            case 0: // GX_NEVER
+                return gl.NEVER;
+            case 1: // GX_LESS
+                return gl.LESS;
+            case 2: // GX_EQUAL
+                return gl.EQUAL;
+            case 3: // GX_LEQUAL
+                return gl.LEQUAL;
+            case 4: // GX_GREATER
+                return gl.GREATER;
+            case 5: // GX_NEQUAL
+                return gl.NOTEQUAL;
+            case 6: // GX_GEQUAL
+                return gl.GEQUAL;
+            case 7: // GX_ALWAYS
+                return gl.ALWAYS;
+            default:
+                console.warn("Unknown depth func", func);
+                return gl.ALWAYS;
+        }
+    }
+
+    function translateZMode(zMode) {
+        var depthTest = {};
+        depthTest.enable = zMode.enable;
+        depthTest.func = getDepthFunc(zMode.zFunc);
+        depthTest.mask = zMode.enableUpdate;
+        return depthTest;
+    }
+
+    var zMode = bmd.mat3.zModes[material.zModeIndex];
+    command.depthTest = translateZMode(zMode);
+
     return command;
 }
 

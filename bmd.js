@@ -640,6 +640,8 @@ function parseMAT3(bmd, stream, offset, size) {
         return texMtxInfo;
     }
 
+    mat3.cullModes = readSection(stream, 4, readLong, 4);
+
     mat3.texMtxInfos = readSection(stream, 13, parseTexMtxInfo, 100);
     mat3.texStageIndexToTextureIndex = readSection(stream, 15, readWord, 2);
 
@@ -715,7 +717,7 @@ function parseMAT3(bmd, stream, offset, size) {
     function parseZMode(stream) {
         var zmode = {};
         zmode.enable = !!readByte(stream);
-        zmode.zFunz = readByte(stream);
+        zmode.zFunc = readByte(stream);
         zmode.enableUpdate = !!readByte(stream);
         stream.pos += 1; // pad
         return zmode;
