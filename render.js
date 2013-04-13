@@ -28,15 +28,16 @@ function createScene(gl) {
             gl.bindBuffer(gl.ARRAY_BUFFER, command.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, command.elementBuffer);
 
-            var attribNames = command.attribNames;
-            attribNames.forEach(function(name) {
+            var attribs = command.attribs;
+            attribs.forEach(function(attrib) {
+                var name = attrib.name;
                 gl.vertexAttribPointer(
                     prog.locations[name],          // location
-                    command.attribSizes[name],     // size
+                    attrib.size,                   // size
                     gl.FLOAT,                      // type
                     false,                         // normalize
                     command.itemSize          * 4, // stride
-                    command.attribOffs[name]  * 4  // offset
+                    attrib.offset             * 4  // offset
                 );
                 gl.enableVertexAttribArray(prog.locations[name]);
             });
@@ -73,8 +74,8 @@ function createScene(gl) {
                 });
             });
 
-            attribNames.forEach(function(name) {
-                gl.disableVertexAttribArray(prog.locations[name]);
+            attribs.forEach(function(attrib) {
+                gl.disableVertexAttribArray(prog.locations[attrib.name]);
             });
         }
 
@@ -546,16 +547,10 @@ function translateBatch(gl, batch, bmd, material) {
     command.program = generateBatchProgram(gl, bmd, material);
     command.itemSize = batch.itemSize;
     command.packets = batch.packets;
-    command.attribSizes = {};
-    command.attribOffs = {};
-    command.attribNames = [];
-    batch.attribs.forEach(function(attrib) {
-        var name = attrib.name;
-        if (command.program.attribNames.indexOf(name) < 0)
-            return; // TODO: this attribute
-        command.attribSizes[name] = attrib.size;
-        command.attribOffs[name] = attrib.offset;
-        command.attribNames.push(name);
+    command.attribs = batch.attribs.filter(function(attrib) {
+        if (command.program.locations[attrib.name] === undefined)
+            return false; // TODO: this attribute
+        return true;
     });
 
     return command;
