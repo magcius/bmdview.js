@@ -345,9 +345,6 @@ function generateShader(decls, main) {
         "}\n");
 }
 
-var vertShader = null;
-var fragShaders = {};
-
 function generateVertShader() {
     var uniforms = [];
     var varyings = [];
@@ -490,21 +487,20 @@ function compileShader(gl, str, type) {
     return shader;
 }
 
+var vertShader = null;
+
 function generateMaterialProgram(gl, bmd, material) {
     if (!vertShader) {
         var vert = generateVertShader();
         vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
     }
 
-    var fragKey = material.index;
-    if (!fragShaders[fragKey]) {
-        var frag = generateFragShader(bmd, material);
-        fragShaders[fragKey] = compileShader(gl, frag, gl.FRAGMENT_SHADER);
-    }
+    var frag = generateFragShader(bmd, material);
+    var fragShader = compileShader(gl, frag, gl.FRAGMENT_SHADER);
 
     var prog = gl.createProgram();
     gl.attachShader(prog, vertShader);
-    gl.attachShader(prog, fragShaders[fragKey]);
+    gl.attachShader(prog, fragShader);
     gl.linkProgram(prog);
 
     prog.locations = {};
