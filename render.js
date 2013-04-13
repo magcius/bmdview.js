@@ -544,7 +544,6 @@ function translateBatch(gl, batch, bmd, material) {
     command.elementBuffer = elementBuffer;
 
     command.program = generateBatchProgram(gl, bmd, material);
-    command.vertCount = batch.vertCount;
     command.itemSize = batch.itemSize;
     command.packets = batch.packets;
     command.attribSizes = batch.attribSizes;
