@@ -28,7 +28,7 @@ function createScene(gl) {
             gl.bindBuffer(gl.ARRAY_BUFFER, command.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, command.elementBuffer);
 
-            var attribNames = prog.attribNames;
+            var attribNames = command.attribNames;
             attribNames.forEach(function(name) {
                 gl.vertexAttribPointer(
                     prog.locations[name],          // location
@@ -344,14 +344,13 @@ function generateShader(decls, main) {
         "}\n");
 }
 
-var vertShaders = {};
+var vertShader = null;
 var fragShaders = {};
 
-function generateBatchVertShader(batch, bmd, material) {
+function generateBatchVertShader() {
     var uniforms = [];
     var varyings = [];
     var attributes = [];
-    var attribNames = [];
     var main = [];
 
     // We should always have position.
@@ -360,17 +359,13 @@ function generateBatchVertShader(batch, bmd, material) {
     uniforms.push("uniform mat4 u_vertexMatrix;");
 
     attributes.push("attribute vec3 a_position;");
-    attribNames.push("position");
     main.push("gl_Position = u_projection * u_modelView * u_vertexMatrix * vec4(a_position, 1.0);");
 
     for (var i = 0; i < 2; i++) {
         var name = "color" + i;
-        if (!batch.attribNames[name])
-            continue;
 
         varyings.push("varying vec4 v_" + name + ";");
         attributes.push("attribute vec4 a_" + name + ";");
-        attribNames.push(name);
         main.push("v_" + name + " = a_" + name + ";");
     }
 
@@ -380,11 +375,10 @@ function generateBatchVertShader(batch, bmd, material) {
     decls.push.apply(decls, varyings);
     decls.push("");
     decls.push.apply(decls, attributes);
-    return { attribNames: attribNames,
-             src: generateShader(decls, main) };
+    return generateShader(decls, main);
 }
 
-function generateBatchFragShader(batch, bmd, material) {
+function generateBatchFragShader(bmd, material) {
     var mat3 = bmd.mat3;
     var header = [];
     var varyings = [];
@@ -393,13 +387,8 @@ function generateBatchFragShader(batch, bmd, material) {
 
     header.push("precision mediump float;");
 
-    for (var i = 0; i < 2; i++) {
-        var name = "color" + i;
-        if (!batch.attribNames[name])
-            continue;
-
-        varyings.push("varying vec4 v_" + name + ";");
-    }
+    varyings.push("varying vec4 v_color0;");
+    varyings.push("varying vec4 v_color1;");
 
     function colorVec(color) {
         return glslCall("vec4", color);
@@ -483,7 +472,7 @@ function generateBatchFragShader(batch, bmd, material) {
     src.push.apply(src, init);
     src.push("");
     src.push.apply(src, main);
-    return { src: generateShader(decls, src) };
+    return generateShader(decls, src);
 }
 
 function compileShader(gl, str, type) {
@@ -500,26 +489,26 @@ function compileShader(gl, str, type) {
     return shader;
 }
 
-function generateBatchProgram(gl, batch, bmd, material) {
-    var vert = generateBatchVertShader(batch, bmd, material);
-    var frag = generateBatchFragShader(batch, bmd, material);
+function generateBatchProgram(gl, bmd, material) {
+    if (!vertShader) {
+        var vert = generateBatchVertShader();
+        vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
+    }
 
-    var vertKey = vert.attribNames;
-    if (!vertShaders[vertKey])
-        vertShaders[vertKey] = compileShader(gl, vert.src, gl.VERTEX_SHADER);
-
-    var fragKey = material.index + "," + vert.attribNames;
-    if (!fragShaders[fragKey])
-        fragShaders[fragKey] = compileShader(gl, frag.src, gl.FRAGMENT_SHADER);
+    var fragKey = material.index;
+    if (!fragShaders[fragKey]) {
+        var frag = generateBatchFragShader(bmd, material);
+        fragShaders[fragKey] = compileShader(gl, frag, gl.FRAGMENT_SHADER);
+    }
 
     var prog = gl.createProgram();
-    gl.attachShader(prog, vertShaders[vertKey]);
+    gl.attachShader(prog, vertShader);
     gl.attachShader(prog, fragShaders[fragKey]);
     gl.linkProgram(prog);
 
     prog.locations = {};
     prog.uniformNames = ["modelView", "projection", "vertexMatrix"];
-    prog.attribNames = vert.attribNames;
+    prog.attribNames = ["position", "color0", "color1"];
 
     prog.uniformNames.forEach(function(name) {
         prog.locations[name] = gl.getUniformLocation(prog, "u_" + name);
@@ -554,13 +543,15 @@ function translateBatch(gl, batch, bmd, material) {
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, range(batch.vertCount), gl.STATIC_DRAW);
     command.elementBuffer = elementBuffer;
 
-    command.program = generateBatchProgram(gl, batch, bmd, material);
+    command.program = generateBatchProgram(gl, bmd, material);
     command.vertCount = batch.vertCount;
     command.itemSize = batch.itemSize;
     command.packets = batch.packets;
-    command.attribNames = batch.attribNames;
     command.attribSizes = batch.attribSizes;
     command.attribOffs = batch.attribOffs;
+    command.attribNames = command.program.attribNames.filter(function(name) {
+        return !!batch.attribNames[name];
+    });
 
     return command;
 }
