@@ -709,7 +709,7 @@ function modelFromBmd(gl, bmd) {
                 var matrix = bmd.jnt1.frames[entry.index];
                 model.commands.push({ type: "updateMatrix", idx: entry.index, matrix: matrix });
                 break;
-            case 0x11: // material, TODO
+            case 0x11: // material
                 var index = bmd.mat3.indexToMatIndex[entry.index];
                 var material = bmd.mat3.materials[index];
                 model.commands.push(translateMaterial(gl, bmd, material));
