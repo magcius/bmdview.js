@@ -593,7 +593,7 @@ function parseMAT3(bmd, stream, offset, size) {
     mat3.color3 = readSection(stream, 18, parseColor, 4);
     mat3.colorS10 = readSection(stream, 17, parseColorShort, 8);
 
-    function parseMatEntry(stream) {
+    function parseMatEntry(stream, i) {
         var entry = {};
         entry.flag = readByte(stream);
         entry.cullIndex = readByte(stream);
@@ -625,6 +625,8 @@ function parseMAT3(bmd, stream, offset, size) {
         entry.alphaCompIndex = readWord(stream);
         entry.blendIndex = readWord(stream);
         stream.pos += 2;
+
+        entry.index = i;
         return entry;
     }
 

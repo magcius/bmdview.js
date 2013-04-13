@@ -344,6 +344,9 @@ function generateShader(decls, main) {
         "}\n");
 }
 
+var vertShaders = {};
+var fragShaders = {};
+
 function generateBatchVertShader(batch, bmd, material) {
     var uniforms = [];
     var varyings = [];
@@ -499,20 +502,25 @@ function compileShader(gl, str, type) {
 }
 
 function generateBatchProgram(gl, batch, bmd, material) {
-    var vertSrc = generateBatchVertShader(batch, bmd, material);
-    var fragSrc = generateBatchFragShader(batch, bmd, material);
+    var vert = generateBatchVertShader(batch, bmd, material);
+    var frag = generateBatchFragShader(batch, bmd, material);
 
-    var vert = compileShader(gl, vertSrc.src, gl.VERTEX_SHADER);
-    var frag = compileShader(gl, fragSrc.src, gl.FRAGMENT_SHADER);
+    var vertKey = vert.attribNames;
+    if (!vertShaders[vertKey])
+        vertShaders[vertKey] = compileShader(gl, vert.src, gl.VERTEX_SHADER);
+
+    var fragKey = material.index + "," + vert.attribNames;
+    if (!fragShaders[fragKey])
+        fragShaders[fragKey] = compileShader(gl, frag.src, gl.FRAGMENT_SHADER);
 
     var prog = gl.createProgram();
-    gl.attachShader(prog, vert);
-    gl.attachShader(prog, frag);
+    gl.attachShader(prog, vertShaders[vertKey]);
+    gl.attachShader(prog, fragShaders[fragKey]);
     gl.linkProgram(prog);
 
     prog.locations = {};
     prog.uniformNames = ["modelView", "projection", "vertexMatrix"];
-    prog.attribNames = vertSrc.attribNames;
+    prog.attribNames = vert.attribNames;
 
     prog.uniformNames.forEach(function(name) {
         prog.locations[name] = gl.getUniformLocation(prog, "u_" + name);
