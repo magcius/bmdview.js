@@ -24,11 +24,11 @@ function createScene(gl) {
 
         function command_updateMaterial(command) {
             material = command;
+            gl.useProgram(material.program);
         }
 
         function command_draw(command) {
             var prog = material.program;
-            gl.useProgram(prog);
 
             gl.bindBuffer(gl.ARRAY_BUFFER, command.buffer);
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, command.elementBuffer);
