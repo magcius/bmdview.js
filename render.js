@@ -57,9 +57,29 @@ function createScene(gl) {
                 }
             }
 
+            function applyTexture(texIndex, i) {
+                if (texIndex == -1)
+                    return;
+
+                var texture = model.textures[texIndex];
+                if (texture == null)
+                    return;
+
+                gl.activeTexture(gl.TEXTURE0 + i);
+                gl.bindTexture(gl.TEXTURE_2D, texture.textureId);
+
+                gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, texture.wrapS);
+                gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, texture.wrapT);
+                // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, texture.minFilter);
+                // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, texture.magFilter);
+
+                gl.uniform1i(locations["texture[" + i + "]"], i);
+            }
+
             applyBlendInfo(command.blendInfo);
             applyCullInfo(command.cullInfo);
             applyDepthTest(command.depthTest);
+            command.textureIndexes.forEach(applyTexture);
         }
 
         function command_draw(command) {
@@ -177,8 +197,7 @@ function getRegIdName(id) {
 }
 
 function getTexAccess(info) {
-    // XXX
-    return "vec4(0.5, 0.5, 0.5, 1.0)";
+    return "texture2D(texture[" + info.texMap + "], v_texCoord"  + info.texCoordId + ".st)";
 }
 
 function getRasColor(info) {
@@ -406,13 +425,17 @@ function generateVertShader() {
     attributes.push("attribute vec3 a_position;");
     main.push("gl_Position = u_projection * u_modelView * u_vertexMatrix * vec4(a_position, 1.0);");
 
-    for (var i = 0; i < 2; i++) {
-        var name = "color" + i;
-
-        varyings.push("varying vec4 v_" + name + ";");
-        attributes.push("attribute vec4 a_" + name + ";");
+    function makeAttribute(type, name) {
+        varyings.push("varying " + type + " v_" + name + ";");
+        attributes.push("attribute " + type + " a_" + name + ";");
         main.push("v_" + name + " = a_" + name + ";");
     }
+
+    for (var i = 0; i < 2; i++)
+        makeAttribute("vec4", "color" + i);
+
+    for (var i = 0; i < 8; i++)
+        makeAttribute("vec2", "texCoord" + i);
 
     var decls = [];
     decls.push.apply(decls, uniforms);
@@ -427,13 +450,23 @@ function generateFragShader(bmd, material) {
     var mat3 = bmd.mat3;
     var header = [];
     var varyings = [];
+    var uniforms = [];
     var init = [];
     var main = [];
 
     header.push("precision mediump float;");
 
-    varyings.push("varying vec4 v_color0;");
-    varyings.push("varying vec4 v_color1;");
+    function makeAttribute(type, name) {
+        varyings.push("varying " + type + " v_" + name + ";");
+    }
+
+    for (var i = 0; i < 2; i++)
+        makeAttribute("vec4", "color" + i);
+
+    for (var i = 0; i < 8; i++)
+        makeAttribute("vec2", "texCoord" + i);
+
+    uniforms.push("uniform sampler2D texture[8];");
 
     function colorVec(color) {
         return glslCall("vec4", color);
@@ -516,6 +549,8 @@ function generateFragShader(bmd, material) {
 
     var decls = [];
     decls.push.apply(decls, header);
+    decls.push("");
+    decls.push.apply(decls, uniforms);
     decls.push("");
     decls.push.apply(decls, varyings);
 
@@ -693,6 +728,15 @@ function translateMaterial(gl, bmd, material) {
     var zMode = bmd.mat3.zModes[material.zModeIndex];
     command.depthTest = translateZMode(zMode);
 
+    function translateTexStage(stage) {
+        var texIndex = bmd.mat3.texStageIndexToTextureIndex[stage];
+        if (texIndex == 0xFFFF)
+            return -1;
+        return texIndex;
+    }
+
+    command.textureIndexes = material.texStages.map(translateTexStage);
+
     return command;
 }
 
@@ -803,8 +847,73 @@ function textureToCanvas(texture) {
 var COMPRESSED_RGB_S3TC_DXT1_EXT = null;
 
 function translateTexture(gl, bmd, texture) {
-    var canvas = textureToCanvas(texture);
-    document.body.appendChild(canvas);
+    var out = {};
+
+    var texId = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texId);
+    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameterf(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    function translateWrapMode(mode) {
+        switch (mode) {
+            case 0:
+                return gl.CLAMP_TO_EDGE;
+            case 1:
+                return gl.REPEAT;
+            case 2:
+                return gl.MIRRORED_REPEAT;
+        }
+    }
+
+    out.wrapS = translateWrapMode(texture.wrapS);
+    out.wrapT = translateWrapMode(texture.wrapT);
+
+    function translateTexFilter(mode) {
+        switch (mode) {
+            case 0:
+                return gl.NEAREST;
+            case 1:
+                return gl.LINEAR;
+            case 2:
+                return gl.NEAREST_MIPMAP_NEAREST;
+            case 3:
+                return gl.LINEAR_MIPMAP_NEAREST;
+            case 4:
+                return gl.NEAREST_MIPMAP_LINEAR;
+            case 5:
+                return gl.LINEAR_MIPMAP_LINEAR;
+        }
+    }
+
+    out.minFilter = translateTexFilter(texture.minFilter);
+    out.maxFilter = translateTexFilter(texture.maxFilter);
+
+    var compressed = false;
+    var pixels = texture.pixels;
+    var format;
+    if (texture.format == "i8") {
+        format = gl.LUMINANCE;
+    } else if (texture.format == "rgba8") {
+        format = gl.RGBA;
+    } else if (texture.format == "dxt1" && COMPRESSED_RGB_S3TC_DXT1_EXT !== null) {
+        compressed = true;
+        format = COMPRESSED_RGB_S3TC_DXT1_EXT;
+    } else if (texture.format == "dxt1") {
+        pixels = new Uint8Array(texture.width * texture.height * 4);
+        decompressDXT1(texture.pixels, pixels);
+        format = gl.RGBA;
+    } else {
+        console.log("Unsupported texture format while loading");
+    }
+
+    if (compressed)
+        gl.compressedTexImage2D(gl.TEXTURE_2D, 0, format, texture.width, texture.height, 0, pixels);
+    else
+        gl.texImage2D(gl.TEXTURE_2D, 0, format, texture.width, texture.height, 0, format, gl.UNSIGNED_BYTE, pixels);
+
+    out.textureId = texId;
+
+    return out;
 }
 
 function modelFromBmd(gl, stream, bmd) {

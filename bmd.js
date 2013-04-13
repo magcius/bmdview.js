@@ -988,7 +988,7 @@ function parseTEX1(bmd, stream, offset, size) {
         }
     }
 
-    function parseTexture(header, xx) {
+    function parseTexture(header) {
         // XXX -- what to do?
         if (header.dataFormat == 0)
             return null;
@@ -1012,6 +1012,10 @@ function parseTEX1(bmd, stream, offset, size) {
         readImage(dst, src, palette, w, h, header.format);
 
         return { pixels: dst,
+                 wrapS: header.wrapS,
+                 wrapT: header.wrapT,
+                 minFilter: header.minFilter,
+                 maxFilter: header.maxFilter,
                  width: w,
                  height: h,
                  format: uncompressedBufferFormat };
