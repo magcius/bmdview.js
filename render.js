@@ -754,9 +754,6 @@ window.addEventListener('load', function() {
         delete keysDown[e.keyCode];
     });
 
-    var fps = 60;
-    var interval = 1000 / fps;
-
     function update() {
         var cameraVel = vec3.create();
         var amount = 5;
@@ -774,7 +771,8 @@ window.addEventListener('load', function() {
 
         mat4.translate(camera, camera, cameraVel);
         scene.setCamera(camera);
-        setTimeout(update, interval);
+
+        window.requestAnimationFrame(update);
     }
 
     update();
