@@ -300,52 +300,52 @@
         }
     }
 
-    function getMods(dest, bias, scale, clamp, type) {
+    function getMods(value, bias, scale, clamp, type) {
         function makeOperand(factor) {
             if (type == 0)
                 return glslCall("vec3", [factor, factor, factor]);
             else
                 return glslValue(factor);
         }
-        var lines = [];
 
         if (bias == gx.TevBias.ADDHALF)
-            lines.push(dest + " += " + makeOperand(0.5) + ";");
+            value = value + " + " + makeOperand(0.5);
         else if (bias == gx.TevBias.SUBHALF)
-            lines.push(dest + " -= " + makeOperand(0.5) + ";");
+            value = value + " - " + makeOperand(0.5);
 
         if (scale == gx.TevScale.SCALE_2)
-            lines.push(dest + " *= " + glslValue(2) + ";");
+            value = "(" + value + ") * " + glslValue(2);
         else if (scale == gx.TevScale.SCALE_4)
-            lines.push(dest + " *= " + glslValue(4) + ";");
+            value = "(" + value + ") * " + glslValue(4);
         else if (scale == gx.TevScale.DIVIDE_2)
-            lines.push(dest + " *= " + glslValue(0.5) + ";");
+            value = "(" + value + ") * " + glslValue(0.5);
 
         if (clamp)
-            lines.push(dest + " = " + glslCall("clamp", [dest, makeOperand("0.0"), makeOperand("1.0")]) + ";");
+            value = glslCall("clamp", [value, makeOperand("0.0"), makeOperand("1.0")]);
 
-        return lines;
+        return value;
     }
 
     function getOp(op, bias, scale, clamp, regId, ins, type) {
         var suffix = [".rgb", ".a"];
         var dest = getRegIdName(regId) + suffix[type];
-        var lines = [];
+        var a = ins[0], b = ins[1], c = ins[2], d = ins[3];
+        var value;
 
         switch (op) {
             case gx.TevOp.ADD:
             case gx.TevOp.SUB:
-                var opStr = (op == gx.TevOp.ADD) ? "+" : "-";
-                lines.push(dest + " = " + opStr + glslCall("mix", ins.slice(0, 3)) + " + " + ins[3] + ";");
+                var opStr = (op == gx.TevOp.ADD) ? " + " : " - ";
+                value = glslValue(d) + opStr + glslCall("mix", [a, b, c]);
+                value = getMods(value, bias, scale, clamp, type);
                 break;
             default:
                 console.warn("unsupported op");
                 break;
         }
 
-        lines.push.apply(lines, getMods(dest, bias, scale, clamp, type));
-
-        return lines;
+        var line = dest + " = " + value + ";";
+        return line;
     }
 
     function getAlphaCompareComponent(comp, ref) {
@@ -505,10 +505,10 @@
             });
 
             main.push("// Tev stage " + i);
-            main.push.apply(main, getOp(stage.colorOp, stage.colorBias, stage.colorScale,
-                                        stage.colorClamp, stage.colorRegId, colorsIn, 0));
-            main.push.apply(main, getOp(stage.alphaOp, stage.alphaBias, stage.alphaScale,
-                                        stage.alphaClamp, stage.alphaRegId, alphasIn, 1));
+            main.push(getOp(stage.colorOp, stage.colorBias, stage.colorScale,
+                            stage.colorClamp, stage.colorRegId, colorsIn, 0));
+            main.push(getOp(stage.alphaOp, stage.alphaBias, stage.alphaScale,
+                            stage.alphaClamp, stage.alphaRegId, alphasIn, 1));
             main.push("");
         }
 
