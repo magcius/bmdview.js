@@ -7,15 +7,21 @@
      
         var modelView = mat4.create();
 
-        var drawTypes = { "strip": gl.TRIANGLE_STRIP,
-                          "fan": gl.TRIANGLE_FAN };
-
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clearColor(77/255, 50/255, 153/255, 1);
 
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
         gl.frontFace(gl.CW);
+
+        function getPrimitiveType(drawType) {
+            switch (drawType) {
+                case gx.PrimitiveType.TRIANGLESTRIP:
+                    return gl.TRIANGLE_STRIP;
+                case gx.PrimitiveType.TRIANGLEFAN:
+                    return gl.TRIANGLE_FAN;
+            }
+        }
 
         function renderModel(model) {
             var matrices = [];
@@ -129,10 +135,10 @@
 
                     packet.primitives.forEach(function(prim) {
                         gl.drawElements(
-                            drawTypes[prim.drawType], // mode
-                            prim.count,               // count
-                            gl.UNSIGNED_SHORT,        // type
-                            prim.start * 2            // offset
+                            getPrimitiveType(prim.drawType), // mode
+                            prim.count,                      // count
+                            gl.UNSIGNED_SHORT,               // type
+                            prim.start * 2                   // offset
                         );
                     });
                 });
@@ -216,48 +222,42 @@
         var suffix = suffixes[op & 1];
 
         switch (op) {
-            case 0x00:
-            case 0x01:
-            case 0x02:
-            case 0x03:
-            case 0x04:
-            case 0x05:
-            case 0x06:
-            case 0x07:
+            case gx.CombineColorInput.CPREV:
+            case gx.CombineColorInput.APREV:
+            case gx.CombineColorInput.C0:
+            case gx.CombineColorInput.A0:
+            case gx.CombineColorInput.C1:
+            case gx.CombineColorInput.A1:
+            case gx.CombineColorInput.C2:
+            case gx.CombineColorInput.A2:
                 return getRegIdName(op >> 1) + suffix;
-            case 0x08:
-            case 0x09:
+            case gx.CombineColorInput.TEXC:
+            case gx.CombineColorInput.TEXA:
                 return getTexAccess(info) + suffix;
-            case 0x0A:
-            case 0x0B:
+            case gx.CombineColorInput.RASC:
+            case gx.CombineColorInput.RASA:
                 return getRasColor(info) + suffix;
-            case 0x0C:
+            case gx.CombineColorInput.ONE:
                 return makeVector("1.0");
-            case 0x0D:
+            case gx.CombineColorInput.HALF:
                 return makeVector("0.5");
-            case 0x0E:
+            case gx.CombineColorInput.KONST:
                 switch (konst) {
-                    case 0x00: return makeVector("1.0");
-                    case 0x01: return makeVector("0.875");
-                    case 0x02: return makeVector("0.75");
-                    case 0x03: return makeVector("0.625");
-                    case 0x04: return makeVector("0.5");
-                    case 0x05: return makeVector("0.375");
-                    case 0x06: return makeVector("0.25");
-                    case 0x07: return makeVector("0.125");
-                    case 0x08:
-                    case 0x09:
-                    case 0x0A:
-                    case 0x0B:
-                        console.warn("unknown color factor");
-                        return "";
+                    case gx.KonstColorSel.KCSEL_1: return makeVector("1.0");
+                    case gx.KonstColorSel.KCSEL_7_8: return makeVector("0.875");
+                    case gx.KonstColorSel.KCSEL_3_4: return makeVector("0.75");
+                    case gx.KonstColorSel.KCSEL_5_8: return makeVector("0.625");
+                    case gx.KonstColorSel.KCSEL_1_2: return makeVector("0.5");
+                    case gx.KonstColorSel.KCSEL_3_8: return makeVector("0.375");
+                    case gx.KonstColorSel.KCSEL_1_4: return makeVector("0.25");
+                    case gx.KonstColorSel.KCSEL_1_8: return makeVector("0.125");
                     default:
                         konst -= 0x0C;
                         suffixes = [".rgb", ".rrr", ".ggg", ".bbb", ".aaa"];
                         suffix = suffixes[(konst / 4) | 0];
                         return getKonstIdName(konst % 4) + suffix;
                 }
-            case 0x0F:
+            case gx.CombineColorInput.ZERO:
                 return makeVector("0.0");
             default:
                 console.warn("unknown color op", op);
@@ -267,41 +267,32 @@
 
     function getAlphaIn(op, konst, info) {
         switch (op) {
-            case 0x00:
-            case 0x01:
-            case 0x02:
-            case 0x03:
+            case gx.CombineAlphaInput.APREV:
+            case gx.CombineAlphaInput.A0:
+            case gx.CombineAlphaInput.A1:
+            case gx.CombineAlphaInput.A2:
                 return getRegIdName(op) + ".a";
-            case 0x04:
+            case gx.CombineAlphaInput.TEXA:
                 return getTexAccess(info) + ".a";
-            case 0x05:
+            case gx.CombineAlphaInput.RASA:
                 return getRasColor(info) + ".a";
-            case 0x06:
+            case gx.CombineAlphaInput.KONST:
                 switch (konst) {
-                    case 0x00: return "1.0";
-                    case 0x01: return "0.875";
-                    case 0x02: return "0.75";
-                    case 0x03: return "0.625";
-                    case 0x04: return "0.5";
-                    case 0x05: return "0.375";
-                    case 0x06: return "0.25";
-                    case 0x07: return "0.125";
-                    case 0x08:
-                    case 0x09:
-                    case 0x0A:
-                    case 0x0B:
-                    case 0x0C:
-                    case 0x0D:
-                    case 0x0E:
-                    case 0x0F:
-                        console.warn("unknown alpha factor");
+                    case gx.KonstAlphaSel.KASEL_1: return "1.0";
+                    case gx.KonstAlphaSel.KASEL_7_8: return "0.875";
+                    case gx.KonstAlphaSel.KASEL_3_4: return "0.75";
+                    case gx.KonstAlphaSel.KASEL_5_8: return "0.625";
+                    case gx.KonstAlphaSel.KASEL_1_2: return "0.5";
+                    case gx.KonstAlphaSel.KASEL_3_8: return "0.375";
+                    case gx.KonstAlphaSel.KASEL_1_4: return "0.25";
+                    case gx.KonstAlphaSel.KASEL_1_8: return "0.125";
                     default:
                         konst -= 0x10;
                         var suffixes = [".r", ".g", ".b", ".a"];
                         var suffix = suffixes[(konst / 4) | 0];
                         return getKonstIdName(konst % 4) + suffix;
                 }
-            case 0x07:
+            case gx.CombineAlphaInput.ZERO:
                 return "0.0";
             default:
                 console.warn("unknown alpha op");
@@ -318,13 +309,17 @@
         }
         var lines = [];
 
-        var biases = [ "+", "-" ];
-        if (bias == 1 || bias == 2)
-            lines.push(dest + " += " + biases[bias - 1] + " " + makeOperand(0.5) + ";");
+        if (bias == gx.TevBias.ADDHALF)
+            lines.push(dest + " += " + makeOperand(0.5) + ";");
+        else if (bias == gx.TevBias.SUBHALF)
+            lines.push(dest + " -= " + makeOperand(0.5) + ";");
 
-        var scales = [ 2, 4, .5 ];
-        if (scale > 0)
-            lines.push(dest + " *= " + glslValue(scales[scale - 1]) + ";");
+        if (scale == gx.TevScale.SCALE_2)
+            lines.push(dest + " *= " + glslValue(2) + ";");
+        else if (scale == gx.TevScale.SCALE_4)
+            lines.push(dest + " *= " + glslValue(4) + ";");
+        else if (scale == gx.TevScale.DIVIDE_2)
+            lines.push(dest + " *= " + glslValue(0.5) + ";");
 
         if (clamp)
             lines.push(dest + " = " + glslCall("clamp", [dest, makeOperand("0.0"), makeOperand("1.0")]) + ";");
@@ -338,16 +333,17 @@
         var lines = [];
 
         switch (op) {
-            case 0x00:
-            case 0x01:
-                var opStr = (op == 0) ? "" : "-";
+            case gx.TevOp.ADD:
+            case gx.TevOp.SUB:
+                var opStr = (op == gx.TevOp.ADD) ? "+" : "-";
                 lines.push(dest + " = " + opStr + glslCall("mix", ins.slice(0, 3)) + " + " + ins[3] + ";");
-                lines.push.apply(lines,getMods(dest, bias, scale, clamp, type));
                 break;
             default:
                 console.warn("unsupported op");
                 break;
         }
+
+        lines.push.apply(lines, getMods(dest, bias, scale, clamp, type));
 
         return lines;
     }
@@ -356,21 +352,21 @@
         var refStr = glslValue(ref / 255);
         var varName = getRegIdName(0) + ".a";
         switch (comp) {
-            case 0: // GX_NEVER
+            case gx.CompareType.NEVER:
                 return "false";
-            case 1: // GX_LESS
+            case gx.CompareType.LESS:
                 return varName + " < " + refStr;
-            case 2: // GX_EQUAL
+            case gx.CompareType.EQUAL:
                 return varName + " == " + refStr;
-            case 3: // GX_LEQUAL
+            case gx.CompareType.LEQUAL:
                 return varName + " <= " + refStr;
-            case 4: // GX_GREATER
+            case gx.CompareType.GREATER:
                 return varName + " > " + refStr;
-            case 5: // GX_NEQUAL
+            case gx.CompareType.NEQUAL:
                 return varName + " != " + refStr;
-            case 6: // GX_GEQUAL
+            case gx.CompareType.GEQUAL:
                 return varName + " >= " + refStr;
-            case 7: // GX_ALWAYS
+            case gx.CompareType.ALWAYS:
                 return "true";
             default:
                 console.warn("bad compare component");
@@ -379,13 +375,13 @@
 
     function getAlphaCompareOp(op) {
         switch (op) {
-            case 0: // GX_AOP_AND
+            case gx.AlphaOp.AND:
                 return "a && b";
-            case 1: // GX_AOP_OR
+            case gx.AlphaOp.OR:
                 return "a || b";
-            case 2: // GX_AOP_XOR
+            case gx.AlphaOp.XOR:
                 return "a != b";
-            case 3: // GX_AOP_XNOR
+            case gx.AlphaOp.XNOR:
                 return "a == b";
             default:
                 console.warn("bad compare op")
@@ -488,16 +484,16 @@
             needReg[stage.alphaRegId] = true;
 
             stage.colorIn.forEach(function(x) {
-                if (x == 0x0E && konstColor >= 0x0C)
+                if (x == gx.CombineColorInput.KONST && konstColor >= 0x0C)
                     needKonst[(konstColor - 0x0C) % 4] = true;
-                if (x <= 0x07)
+                if (x <= gx.CombineColorInput.A2)
                     needReg[(x / 2) | 0] = true;
             });
 
             stage.alphaIn.forEach(function(x) {
-                if (x == 0x06 && konstAlpha >= 0x10)
+                if (x == gx.CombineAlphaInput.KONST && konstAlpha >= 0x10)
                     needKonst[(konstAlpha - 0x10) % 4] = true;
-                if (x <= 0x03)
+                if (x <= gx.CombineAlphaInput.A2)
                     needReg[x] = true;
             });
 
@@ -644,14 +640,14 @@
         function translateCullMode(cullMode) {
             var cullInfo = {};
             switch (cullMode) {
-                case 0: // GX_CULL_NONE
+                case gx.CullMode.NONE:
                     cullInfo.enable = false;
                     break;
-                case 1: // GX_CULL_FRONT
+                case gx.CullMode.FRONT:
                     cullInfo.enable = true;
                     cullInfo.face = gl.FRONT;
                     break;
-                case 2: // GX_CULL_BACK
+                case gx.CullMode.BACK:
                     cullInfo.enable = true;l
                     cullInfo.face = gl.BACk;
                     break;
@@ -663,21 +659,21 @@
 
         function getBlendFunc(blendMode) {
             switch(blendMode) {
-                case 0: // GX_BL_ZERO
+                case gx.BlendMode.ZERO:
                     return gl.ZERO;
-                case 1: // GX_BL_ONE
+                case gx.BlendMode.ONE:
                     return gl.ONE;
-                case 2: // GX_BL_SRCCLR / GX_BL_DSTCLR
+                case gx.BlendMode.SRCCLR:
                     return gl.SRC_COLOR;
-                case 3: // GX_BL_INVSRCCLOR / GX_BL_INVDSTCLR
+                case gx.BlendMode.INVSRCCLOR:
                     return gl.ONE_MINUS_SRC_COLOR;
-                case 4: // GX_BL_SRCALPHA
+                case gx.BlendMode.SRCALPHA:
                     return gl.SRC_ALPHA;
-                case 5: // GX_BL_INVSRCALPHA
+                case gx.BlendMode.INVSRCALPHA:
                     return gl.ONE_MINUS_SRC_ALPHA;
-                case 6: // GX_DSTALPHA
+                case gx.BlendMode.DSTALPHA:
                     return gl.DST_ALPHA;
-                case 7: // GX_INVDSTALPHA
+                case gx.BlendMode.INVDSTALPHA:
                     return gl.ONE_MINUS_DST_ALPHA;
                 default:
                     console.warn("Unknown blend mode ", blendMode);
@@ -697,21 +693,21 @@
 
         function getDepthFunc(func) {
             switch (func) {
-                case 0: // GX_NEVER
+                case gx.CompareType.NEVER:
                     return gl.NEVER;
-                case 1: // GX_LESS
+                case gx.CompareType.LESS:
                     return gl.LESS;
-                case 2: // GX_EQUAL
+                case gx.CompareType.EQUAL:
                     return gl.EQUAL;
-                case 3: // GX_LEQUAL
+                case gx.CompareType.LEQUAL:
                     return gl.LEQUAL;
-                case 4: // GX_GREATER
+                case gx.CompareType.GREATER:
                     return gl.GREATER;
-                case 5: // GX_NEQUAL
+                case gx.CompareType.NEQUAL:
                     return gl.NOTEQUAL;
-                case 6: // GX_GEQUAL
+                case gx.CompareType.GEQUAL:
                     return gl.GEQUAL;
-                case 7: // GX_ALWAYS
+                case gx.CompareType.ALWAYS:
                     return gl.ALWAYS;
                 default:
                     console.warn("Unknown depth func", func);
@@ -872,17 +868,17 @@
 
         function translateTexFilter(mode) {
             switch (mode) {
-                case 0:
+                case gx.TexFilter.NEAR:
                     return gl.NEAREST;
-                case 1:
+                case gx.TexFilter.LINEAR:
                     return gl.LINEAR;
-                case 2:
+                case gx.TexFilter.NEAR_MIP_NEAR:
                     return gl.NEAREST_MIPMAP_NEAREST;
-                case 3:
+                case gx.TexFilter.LIN_MIP_NEAR:
                     return gl.LINEAR_MIPMAP_NEAREST;
-                case 4:
+                case gx.TexFilter.NEAR_MIP_LIP:
                     return gl.NEAREST_MIPMAP_LINEAR;
-                case 5:
+                case gx.TexFilter.LIN_MIP_LIN:
                     return gl.LINEAR_MIPMAP_LINEAR;
             }
         }

@@ -114,30 +114,30 @@
 
         function getItemSize(format) {
             switch (format.attrib) {
-                case 0x09:  // positions
+                case gx.VertexAttribute.POS:
                     if (format.componentCount == 0) // xy
                         return 2;
                     else if (format.componentCount == 1) // xyz
                         return 3;
                     break;
-                case 0x0A: // normals
+                case gx.VertexAttribute.NRM:
                         return 3;
                     break;
-                case 0x0B: // color0
-                case 0x0C: // color1
+                case gx.VertexAttribute.CLR0:
+                case gx.VertexAttribute.CLR1:
                     if (format.componentCount == 0) // rgb
                         return 3;
                     else if (format.componentCount == 1) // rgba
                         return 4;
                     break;
-                case 0x0D: // tex coords
-                case 0x0E:
-                case 0x0F:
-                case 0x10:
-                case 0x11:
-                case 0x12:
-                case 0x13:
-                case 0x14:
+                case gx.VertexAttribute.TEX0:
+                case gx.VertexAttribute.TEX1:
+                case gx.VertexAttribute.TEX2:
+                case gx.VertexAttribute.TEX3:
+                case gx.VertexAttribute.TEX4:
+                case gx.VertexAttribute.TEX5:
+                case gx.VertexAttribute.TEX6:
+                case gx.VertexAttribute.TEX7:
                     if (format.componentCount == 0) // s
                         return 1;
                     else if (format.componentCount == 1) // st
@@ -343,25 +343,19 @@
         stream.pos = shp1.offset + shp1.offsetToBatches;
         shp1.batches = collect(stream, parseBatch, shp1.batchCount);
 
-        var attribNames = {
-            0x09: "position",
-            0x0A: "normal",
-            0x0B: "color0",
-            0x0C: "color1",
-            0x0D: "texCoords0",
-            0x0E: "texCoords1",
-            0x0F: "texCoords2",
-            0x10: "texCoords3",
-            0x11: "texCoords4",
-            0x12: "texCoords5",
-            0x13: "texCoords6",
-            0x14: "texCoords7",
-        };
-
-        var drawTypes = {
-            0x98: "strip",
-            0xA0: "fan"
-        };
+        var attribNames = {};
+        attribNames[gx.VertexAttribute.POS] = "position";
+        attribNames[gx.VertexAttribute.NRM] = "normal";
+        attribNames[gx.VertexAttribute.CLR0] = "color0";
+        attribNames[gx.VertexAttribute.CLR1] = "color1";
+        attribNames[gx.VertexAttribute.TEX0] = "texCoords0";
+        attribNames[gx.VertexAttribute.TEX1] = "texCoords1";
+        attribNames[gx.VertexAttribute.TEX2] = "texCoords2";
+        attribNames[gx.VertexAttribute.TEX3] = "texCoords3";
+        attribNames[gx.VertexAttribute.TEX4] = "texCoords4";
+        attribNames[gx.VertexAttribute.TEX5] = "texCoords5";
+        attribNames[gx.VertexAttribute.TEX6] = "texCoords6";
+        attribNames[gx.VertexAttribute.TEX7] = "texCoords7";
 
         function parseAttribs(stream) {
             var attribs = [];
@@ -458,14 +452,12 @@
             var i = start;
             var primitives = [];
             while (stream.pos < end) {
-                var type = readByte(stream);
-                if (type == 0)
+                var drawType = readByte(stream);
+                if (drawType == 0)
                     break;
 
                 var count = readWord(stream);
                 parsePrimitive(stream, batch, i, count);
-
-                var drawType = drawTypes[type];
 
                 var prim = { drawType: drawType,
                              start: i,
@@ -773,28 +765,27 @@
             var h4 = (h + 3) & ~3;
 
             switch(format)  {
-
-                case 0x00: // I4
+                case gx.TexFormat.I4:
                     return w8 * h8 / 2;
-                case 0x01: // I8
+                case gx.TexFormat.I8:
                     return w8 * h8;
-                case 0x02: // A4_I4
+                case gx.TexFormat.IA4:
                     return w8 * h4;
-                case 0x03: // A8_I8
+                case gx.TexFormat.IA8:
                     return w4 * h4 * 2;
-                case 0x04: // R5_G6_B5
+                case gx.TexFormat.RGB565:
                     return w4 * h4 * 2;
-                case 0x05: // A3_RGB5
+                case gx.TexFormat.RGB5A3:
                     return w4 * h4 * 2;
-                case 0x06: // ARGB8
+                case gx.TexFormat.RGBA8:
                     return w4 * h4 * 4;
-                case 0x08: // INDEX4
+                case gx.TexFormat.CI4:
                     return w8 * h8 / 2;
-                case 0x09: // INDEX8
+                case gx.TexFormat.CI8:
                     return w8 * h8;
-                case 0x0A: // INDEX14_X2
+                case gx.TexFormat.CI14:
                     return w8 * h8 * 2;
-                case 0x0E: // S3TC
+                case gx.TexFormat.CMPR:
                     return w4 * h4 / 2;
             }
             console.warn("Unknown texture format");
@@ -803,28 +794,28 @@
 
         function getUncompressedBufferFormat(format, paletteFormat) {
             switch (format) {
-                case 0x00: // I4
-                case 0x01: // I8
+                case gx.TexFormat.I4:
+                case gx.TexFormat.I8:
                     return "i8";
-                case 0x02: // A4_I4
-                case 0x03: // A8_I8
+                case gx.TexFormat.IA4:
+                case gx.TexFormat.IA8:
                     return "i8_a8";
-                case 0x04: // R5_G6_B5
-                case 0x05: // A3_RGB5
-                case 0x06: // ARGB8
+                case gx.TexFormat.RGB565:
+                case gx.TexFormat.RGB5A3:
+                case gx.TexFormat.RGBA8:
                     return "rgba8";
-                case 0x08: // INDEX4
-                case 0x09: // INDEX8
-                case 0x0A: // INDEX14_X2
+                case gx.TexFormat.CI4:
+                case gx.TexFormat.CI8:
+                case gx.TexFormat.CI14:
                     switch (paletteFormat) {
-                        case 0x00: // PAL_A8_I8
+                        case gx.TexPalete.IA8: // PAL_A8_I8
                             return "i8_a8";
-                        case 0x01: // PAL_R5_G6_B5
-                        case 0x02: // PAL_A3_RGB5
+                        case gx.TexPalete.RGB565: // PAL_R5_G6_B5
+                        case gx.TexPalete.RGB5A3: // PAL_A3_RGB5
                             return "rgba8";
                     }
                     break;
-                case 0x0E: // S3TC
+                case gx.TexFormat.CMPR:
                     return "dxt1";
             }
 
@@ -970,21 +961,21 @@
 
         function readImage(dst, src, palette, w, h, format) {
             switch (format) {
-                case 0x00: // I4
+                case gx.TexFormat.I4:
                     return readI4(dst, src, w, h);
-                case 0x01: // I8
+                case gx.TexFormat.I8:
                     return readI8(dst, src, w, h);
-                case 0x02: // A4_I4
+                case gx.TexFormat.IA4:
                     return readA4_I4(dst, src, w, h);
-                case 0x03: // A8_I8
+                case gx.TexFormat.IA8:
                     return readA8_I8(dst, src, w, h);
-                case 0x04: // R5_G6_B5
+                case gx.TexFormat.RGB565:
                     return readR5_G6_B5(dst, src, w, h);
-                case 0x05: // A3_RGB5
+                case gx.TexFormat.RGB5A3:
                     return readA3_RGB5(dst, src, w, h);
-                case 0x06: // ARGB8
+                case gx.TexFormat.RGBA8:
                     return readARGB8(dst, src, w, h);
-                case 0x0E: // S3TC1
+                case gx.TexFormat.CMPR:
                     return readS3TC1(dst, src, w, h);
                 default:
                     console.warn("Unsupported texture", format);
