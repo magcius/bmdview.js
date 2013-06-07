@@ -343,20 +343,6 @@
         stream.pos = shp1.offset + shp1.offsetToBatches;
         shp1.batches = collect(stream, parseBatch, shp1.batchCount);
 
-        var attribNames = {};
-        attribNames[gx.VertexAttribute.POS] = "position";
-        attribNames[gx.VertexAttribute.NRM] = "normal";
-        attribNames[gx.VertexAttribute.CLR0] = "color0";
-        attribNames[gx.VertexAttribute.CLR1] = "color1";
-        attribNames[gx.VertexAttribute.TEX0] = "texCoords0";
-        attribNames[gx.VertexAttribute.TEX1] = "texCoords1";
-        attribNames[gx.VertexAttribute.TEX2] = "texCoords2";
-        attribNames[gx.VertexAttribute.TEX3] = "texCoords3";
-        attribNames[gx.VertexAttribute.TEX4] = "texCoords4";
-        attribNames[gx.VertexAttribute.TEX5] = "texCoords5";
-        attribNames[gx.VertexAttribute.TEX6] = "texCoords6";
-        attribNames[gx.VertexAttribute.TEX7] = "texCoords7";
-
         function parseAttribs(stream) {
             var attribs = [];
             var offs = 0;
@@ -365,10 +351,10 @@
             do {
                 var attrib = {};
 
-                attrib.attrib = readLong(stream);
+                attrib.type = readLong(stream);
                 attrib.dataType = readLong(stream);
 
-                if (attrib.attrib == 0xFF)
+                if (attrib.type == 0xFF)
                     break;
 
                 if (attrib.dataType == 1)
@@ -378,10 +364,7 @@
                 else
                     console.warn("Unknown attrib data type", attrib.dataType);
 
-                var name = attribNames[attrib.attrib];
-                var size = bmd.vtx1.formats[attrib.attrib].itemSize;
-
-                attrib.name = name;
+                var size = bmd.vtx1.formats[attrib.type].itemSize;
                 attrib.size = size;
                 attrib.offset = offs;
 
@@ -411,7 +394,7 @@
             var dstOffs = start * batch.itemSize;
             for (var i = 0; i < count; i++) {
                 batch.attribs.forEach(function(attrib) {
-                    var format = bmd.vtx1.formats[attrib.attrib];
+                    var format = bmd.vtx1.formats[attrib.type];
                     var size = format.itemSize;
                     var idx;
 

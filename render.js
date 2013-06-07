@@ -25,7 +25,9 @@
 
         function renderModel(model) {
             var matrices = [];
-            var locations;
+            var attribLocations;
+            var uniformLocations;
+
             for (var i = 0; i < 10; i++)
                 matrices.push(mat4.create());
 
@@ -35,7 +37,8 @@
 
             function command_updateMaterial(command) {
                 gl.useProgram(command.program);
-                locations = command.program.locations;
+                attribLocations = command.program.attribLocations;
+                uniformLocations = command.program.uniformLocations;
 
                 function applyBlendInfo(blendInfo) {
                     if (blendInfo.enable) {
@@ -81,7 +84,7 @@
                     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, texture.minFilter);
                     // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, texture.magFilter);
 
-                    gl.uniform1i(locations["texture[" + i + "]"], i);
+                    gl.uniform1i(command.program.uniformLocations["texture[" + i + "]"], i);
                 }
 
                 applyBlendInfo(command.blendInfo);
@@ -96,19 +99,19 @@
 
                 var attribs = command.attribs;
                 attribs.forEach(function(attrib) {
-                    var name = attrib.name;
-                    if (locations[name] === undefined)
+                    var type = attrib.type;
+                    if (attribLocations[type] === undefined)
                         return; // TODO: this attribute
 
                     gl.vertexAttribPointer(
-                        locations[name],               // location
+                        attribLocations[type],         // location
                         attrib.size,                   // size
                         gl.FLOAT,                      // type
                         false,                         // normalize
                         command.itemSize          * 4, // stride
                         attrib.offset             * 4  // offset
                     );
-                    gl.enableVertexAttribArray(locations[name]);
+                    gl.enableVertexAttribArray(attribLocations[type]);
                 });
 
                 var matrixTable = [];
@@ -126,12 +129,12 @@
                     return updated;
                 }
 
-                gl.uniformMatrix4fv(locations.projection, false, projection);
-                gl.uniformMatrix4fv(locations.modelView, false, modelView);
+                gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
+                gl.uniformMatrix4fv(uniformLocations["modelView"], false, modelView);
 
                 command.packets.forEach(function(packet) {
                     if (updateMatrixTable(packet))
-                        gl.uniformMatrix4fv(locations.vertexMatrix, false, matrixTable[0]);
+                        gl.uniformMatrix4fv(uniformLocations["vertexMatrix"], false, matrixTable[0]);
 
                     packet.primitives.forEach(function(prim) {
                         gl.drawElements(
@@ -144,11 +147,11 @@
                 });
 
                 attribs.forEach(function(attrib) {
-                    var name = attrib.name;
-                    if (locations[name] === undefined)
+                    var type = attrib.type;
+                    if (attribLocations[type] === undefined)
                         return; // TODO: this attribute
 
-                    gl.disableVertexAttribArray(locations[name]);
+                    gl.disableVertexAttribArray(attribLocations[type]);
                 });
             }
 
@@ -409,6 +412,21 @@
             "}\n");
     }
 
+    // Vertex attrib types we care about
+    var vertexAttribs = [
+        { storage: "vec3", type: gx.VertexAttribute.POS,  name: "position" },
+        { storage: "vec4", type: gx.VertexAttribute.CLR0, name: "color0" },
+        { storage: "vec4", type: gx.VertexAttribute.CLR1, name: "color1" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX0, name: "texCoord0" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX1, name: "texCoord1" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX2, name: "texCoord2" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX3, name: "texCoord3" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX4, name: "texCoord4" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX5, name: "texCoord5" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX6, name: "texCoord6" },
+        { storage: "vec2", type: gx.VertexAttribute.TEX7, name: "texCoord7" },
+    ];
+
     function generateVertShader() {
         var uniforms = [];
         var varyings = [];
@@ -420,20 +438,14 @@
         uniforms.push("uniform mat4 u_projection;");
         uniforms.push("uniform mat4 u_vertexMatrix;");
 
-        attributes.push("attribute vec3 a_position;");
         main.push("gl_Position = u_projection * u_modelView * u_vertexMatrix * vec4(a_position, 1.0);");
 
-        function makeAttribute(type, name) {
-            varyings.push("varying " + type + " v_" + name + ";");
-            attributes.push("attribute " + type + " a_" + name + ";");
-            main.push("v_" + name + " = a_" + name + ";");
+        function makeAttribute(attrib) {
+            varyings.push("varying " + attrib.storage + " v_" + attrib.name + ";");
+            attributes.push("attribute " + attrib.storage + " a_" + attrib.name + ";");
+            main.push("v_" + attrib.name + " = a_" + attrib.name + ";");
         }
-
-        for (var i = 0; i < 2; i++)
-            makeAttribute("vec4", "color" + i);
-
-        for (var i = 0; i < 8; i++)
-            makeAttribute("vec2", "texCoord" + i);
+        vertexAttribs.forEach(makeAttribute);
 
         var decls = [];
         decls.push.apply(decls, uniforms);
@@ -454,15 +466,10 @@
 
         header.push("precision mediump float;");
 
-        function makeAttribute(type, name) {
-            varyings.push("varying " + type + " v_" + name + ";");
+        function makeAttribute(attrib) {
+            varyings.push("varying " + attrib.storage + " v_" + attrib.name + ";");
         }
-
-        for (var i = 0; i < 2; i++)
-            makeAttribute("vec4", "color" + i);
-
-        for (var i = 0; i < 8; i++)
-            makeAttribute("vec2", "texCoord" + i);
+        vertexAttribs.forEach(makeAttribute);
 
         uniforms.push("uniform sampler2D texture[8];");
 
@@ -589,15 +596,14 @@
         gl.attachShader(prog, fragShader);
         gl.linkProgram(prog);
 
-        prog.locations = {};
-        prog.uniformNames = ["modelView", "projection", "vertexMatrix"];
-        prog.attribNames = ["position", "color0", "color1"];
-
-        prog.uniformNames.forEach(function(name) {
-            prog.locations[name] = gl.getUniformLocation(prog, "u_" + name);
+        prog.uniformLocations = {};
+        ["modelView", "projection", "vertexMatrix"].forEach(function(name) {
+            prog.uniformLocations[name] = gl.getUniformLocation(prog, "u_" + name);
         });
-        prog.attribNames.forEach(function(name) {
-            prog.locations[name] = gl.getAttribLocation(prog, "a_" + name);
+
+        prog.attribLocations = [];
+        vertexAttribs.forEach(function(attrib) {
+            prog.attribLocations[attrib.type] = gl.getAttribLocation(prog, "a_" + attrib.name);
         });
 
         return prog;
