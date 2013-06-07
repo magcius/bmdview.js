@@ -1,8 +1,6 @@
 (function() {
     "use strict";
 
-    // bump
-
     function createScene(gl) {
         var projection = mat4.create();
         mat4.perspective(projection, Math.PI / 4, gl.viewportWidth / gl.viewportHeight, 0.1*128, 2500*128);
