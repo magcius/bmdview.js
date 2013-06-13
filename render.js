@@ -803,10 +803,10 @@
                     colorTable[8+2] = (colorTable[0+2] + colorTable[4+2] + 1) / 2;
                     colorTable[8+3] = 0xFF;
 
-                    //only the alpha value of this color is important...
-                    colorTable[12+0] = (colorTable[0+0] + 2*colorTable[4+0] + 1) / 3;
-                    colorTable[12+1] = (colorTable[0+1] + 2*colorTable[4+1] + 1) / 3;
-                    colorTable[12+2] = (colorTable[0+2] + 2*colorTable[4+2] + 1) / 3;
+                    // Only the alpha value of this color is important...
+                    colorTable[12+0] = 0x00;
+                    colorTable[12+1] = 0x00;
+                    colorTable[12+2] = 0x00;
                     colorTable[12+3] = 0x00;
                 }
 
