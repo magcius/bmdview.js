@@ -385,11 +385,6 @@
             return loc;
         }
 
-        function memcpy(dst, dstOffs, src, srcOffs, size) {
-            while (size--)
-                dst[dstOffs++] = src[srcOffs++];
-        }
-
         function parsePrimitive(stream, batch, start, count) {
             var dstOffs = start * batch.itemSize;
             for (var i = 0; i < count; i++) {
