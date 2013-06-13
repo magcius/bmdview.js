@@ -879,19 +879,19 @@
                             dst[w*(y + dy) + x + dx] = src[si];
         }
 
-        function readA4_I4(dst, src, w, h) {
-            console.warn("Unsupported texture: A4_I4");
+        function readIA4(dst, src, w, h) {
+            console.warn("Unsupported texture: IA4");
         }
 
-        function readA8_I8(dst, src, w, h) {
-            console.warn("Unsupported texture: A8_I8");
+        function readIA8(dst, src, w, h) {
+            console.warn("Unsupported texture: IA8");
         }
 
-        function readR5_G6_B5(dst, src, w, h) {
-            console.warn("Unsupported texture: R5_G6_B5");
+        function readRGB565(dst, src, w, h) {
+            console.warn("Unsupported texture: RGB565");
         }
 
-        function readA3_RGB5(dst, src, w, h) {
+        function readRGB5A3(dst, src, w, h) {
             var si = 0;
             for (var y = 0; y < h; y += 4)
                 for (var x = 0; x < w; x += 4)
@@ -904,7 +904,7 @@
                         }
         }
 
-        function readARGB8(dst, src, w, h) {
+        function readRGBA8(dst, src, w, h) {
             console.warn("Unsupported texture: ARGB8");
         }
 
@@ -944,15 +944,15 @@
                 case gx.TexFormat.I8:
                     return readI8(dst, src, w, h);
                 case gx.TexFormat.IA4:
-                    return readA4_I4(dst, src, w, h);
+                    return readIA4(dst, src, w, h);
                 case gx.TexFormat.IA8:
-                    return readA8_I8(dst, src, w, h);
+                    return readIA8(dst, src, w, h);
                 case gx.TexFormat.RGB565:
-                    return readR5_G6_B5(dst, src, w, h);
+                    return readRGB565(dst, src, w, h);
                 case gx.TexFormat.RGB5A3:
-                    return readA3_RGB5(dst, src, w, h);
+                    return readRGB5A3(dst, src, w, h);
                 case gx.TexFormat.RGBA8:
-                    return readARGB8(dst, src, w, h);
+                    return readRGBA8(dst, src, w, h);
                 case gx.TexFormat.CMPR:
                     return readS3TC1(dst, src, w, h);
                 default:
