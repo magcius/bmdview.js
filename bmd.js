@@ -1027,27 +1027,40 @@
     function parseBMD(stream) {
         stream.pos = 0x20; // skip header
 
-        function parseEntry(tag, func) {
-            var offset = stream.pos;
-            var readTag = readString(stream, 4);
-            if (tag != readTag)
-                throw new Error("Bad data: got " + readTag + " for " + tag);
-            var size = readLong(stream);
+        var funcs = {
+            "INF1": parseINF1,
+            "VTX1": parseVTX1,
+            "EVP1": parseEVP1,
+            "DRW1": parseDRW1,
+            "JNT1": parseJNT1,
+            "SHP1": parseSHP1,
+            "MAT3": parseMAT3,
+            "TEX1": parseTEX1,
+        };
 
-            var entry = func(bmd, stream, offset, size);
-            stream.pos = offset + size;
-            return entry;
+        function parseEntryHeader() {
+            var offset = stream.pos;
+            var tag = readString(stream, 4);
+            var size = readLong(stream);
+            return { tag: tag, size: size, offset: offset };
         }
 
         var bmd = {};
-        bmd.inf1 = parseEntry("INF1", parseINF1);
-        bmd.vtx1 = parseEntry("VTX1", parseVTX1);
-        bmd.evp1 = parseEntry("EVP1", parseEVP1);
-        bmd.drw1 = parseEntry("DRW1", parseDRW1);
-        bmd.jnt1 = parseEntry("JNT1", parseJNT1);
-        bmd.shp1 = parseEntry("SHP1", parseSHP1);
-        bmd.mat3 = parseEntry("MAT3", parseMAT3);
-        bmd.tex1 = parseEntry("TEX1", parseTEX1);
+        function doEntry() {
+            var header = parseEntryHeader();
+            var func = funcs[header.tag];
+            if (func) {
+                var entry = func(bmd, stream, header.offset, header.size);
+                bmd[header.tag.toLowerCase()] = entry;
+            } else {
+                console.log("Unrecognized section: ", header.tag);
+            }
+
+            stream.pos = header.offset + header.size;
+        }
+
+        while (!eof(stream))
+            doEntry();
 
         return bmd;
     }
