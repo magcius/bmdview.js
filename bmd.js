@@ -887,8 +887,34 @@
             console.warn("Unsupported texture: IA8");
         }
 
+        function r5g6b5(dst, dstOffs, pixel) {
+            var r, g, b;
+            r = (pixel & 0xF100) >> 11;
+            g = (pixel & 0x07E0) >> 5;
+            b = (pixel & 0x001F);
+
+            // http://www.mindcontrol.org/~hplus/graphics/expand-bits.html
+            r = (r << (8 - 5)) | (r >> (10 - 8));
+            g = (g << (8 - 6)) | (g >> (12 - 8));
+            b = (b << (8 - 5)) | (b >> (10 - 8));
+
+            dst[dstOffs+0] = r;
+            dst[dstOffs+1] = g;
+            dst[dstOffs+2] = b;
+            dst[dstOffs+3] = 0xFF;
+        }
+
         function readRGB565(dst, src, w, h) {
-            console.warn("Unsupported texture: RGB565");
+            var si = 0;
+            for (var y = 0; y < h; y += 4)
+                for (var x = 0; x < w; x += 4)
+                    for (var dy = 0; dy < 4; dy++)
+                        for (var dx = 0; dx < 4; dx++) {
+                            var srcPixel = src[si] << 8 | src[si + 1];
+                            var dstOffs = 4*(w*(y + dy) + x + dx);
+                            r5g6b5(dst, dstOffs, srcPixel);
+                            si += 2;
+                        }
         }
 
         function readRGB5A3(dst, src, w, h) {
