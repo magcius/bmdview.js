@@ -885,7 +885,7 @@
                     return gl.NEAREST_MIPMAP_NEAREST;
                 case gx.TexFilter.LIN_MIP_NEAR:
                     return gl.LINEAR_MIPMAP_NEAREST;
-                case gx.TexFilter.NEAR_MIP_LIP:
+                case gx.TexFilter.NEAR_MIP_LIN:
                     return gl.NEAREST_MIPMAP_LINEAR;
                 case gx.TexFilter.LIN_MIP_LIN:
                     return gl.LINEAR_MIPMAP_LINEAR;
