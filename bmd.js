@@ -296,7 +296,7 @@
             mat4.rotateY(frame, frame, ry);
             mat4.rotateZ(frame, frame, rz);
 
-            stream.pos += 2; // unk2
+            stream.pos += 4; // unk2
 
             frame.bbMin = collect(stream, readFloat, 3);
             frame.bbMax = collect(stream, readFloat, 3);
