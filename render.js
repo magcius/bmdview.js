@@ -957,18 +957,24 @@
 
     function checkExtensions(gl) {
         var extensions = gl.getSupportedExtensions();
-        var s3tcExts = extensions.filter(function(name) {
-            return /compressed_texture_s3tc$/.test(name);
-        });
-        if (!s3tcExts[0])
-            return;
 
-        var extension = gl.getExtension(s3tcExts[0]);
-        var dxt1 = extension.COMPRESSED_RGB_S3TC_DXT1_EXT;
-        if (!dxt1)
-            return;
+        function checkS3TC() {
+            var s3tcExts = extensions.filter(function(name) {
+                return /compressed_texture_s3tc$/.test(name);
+            });
+            if (!s3tcExts[0]) {
+                return;
+            }
 
-        COMPRESSED_RGB_S3TC_DXT1_EXT = dxt1;
+            var extension = gl.getExtension(s3tcExts[0]);
+            var dxt1 = extension.COMPRESSED_RGB_S3TC_DXT1_EXT;
+            if (!dxt1)
+                return;
+
+            COMPRESSED_RGB_S3TC_DXT1_EXT = dxt1;
+        }
+
+        checkS3TC();
     }
 
     window.addEventListener('load', function() {
