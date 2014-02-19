@@ -987,7 +987,7 @@
                      wrapS: header.wrapS,
                      wrapT: header.wrapT,
                      minFilter: header.minFilter,
-                     maxFilter: header.maxFilter,
+                     magFilter: header.magFilter,
                      width: w,
                      height: h,
                      format: uncompressedBufferFormat };

@@ -893,7 +893,7 @@
         }
 
         out.minFilter = translateTexFilter(texture.minFilter);
-        out.magFilter = translateTexFilter(texture.maxFilter);
+        out.magFilter = translateTexFilter(texture.magFilter);
 
         var compressed = false;
         var pixels = texture.pixels;
