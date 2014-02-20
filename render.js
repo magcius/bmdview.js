@@ -880,15 +880,11 @@
                 case gx.TexFilter.NEAR:
                     return gl.NEAREST;
                 case gx.TexFilter.LINEAR:
-                    return gl.LINEAR;
                 case gx.TexFilter.NEAR_MIP_NEAR:
-                    return gl.NEAREST_MIPMAP_NEAREST;
                 case gx.TexFilter.LIN_MIP_NEAR:
-                    return gl.LINEAR_MIPMAP_NEAREST;
                 case gx.TexFilter.NEAR_MIP_LIN:
-                    return gl.NEAREST_MIPMAP_LINEAR;
                 case gx.TexFilter.LIN_MIP_LIN:
-                    return gl.LINEAR_MIPMAP_LINEAR;
+                    return gl.LINEAR;
             }
         }
 
