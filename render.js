@@ -394,6 +394,7 @@
 
     // Vertex attrib types we care about
     var vertexAttribs = [
+        { storage: "float", type: gx.VertexAttribute.PTNMTXIDX, name: "matrixIndex" },
         { storage: "vec3", type: gx.VertexAttribute.POS,  name: "position" },
         { storage: "vec4", type: gx.VertexAttribute.CLR0, name: "color0" },
         { storage: "vec4", type: gx.VertexAttribute.CLR1, name: "color1" },
@@ -416,9 +417,9 @@
         // We should always have position.
         uniforms.push("uniform mat4 u_modelView;");
         uniforms.push("uniform mat4 u_projection;");
-        uniforms.push("uniform mat4 u_matrixTable[1];");
+        uniforms.push("uniform mat4 u_matrixTable[8];");
 
-        main.push("gl_Position = u_projection * u_modelView * u_matrixTable[0] * vec4(a_position, 1.0);");
+        main.push("gl_Position = u_projection * u_modelView * u_matrixTable[int(a_matrixIndex)] * vec4(a_position, 1.0);");
 
         function makeAttribute(attrib) {
             varyings.push("varying " + attrib.storage + " v_" + attrib.name + ";");
