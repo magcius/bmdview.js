@@ -27,8 +27,16 @@
             var attribLocations;
             var uniformLocations;
 
+            var matrixTable = new Float32Array(16 * 8);
+
+            function bindMatrixTable() {
+                if (uniformLocations)
+                    gl.uniformMatrix4fv(uniformLocations["matrixTable"], false, matrixTable);
+            }
+
             function command_updateMatrix(command) {
-                // Do nothing for now.
+                matrixTable.set(command.matrix, command.idx * 16);
+                bindMatrixTable();
             }
 
             function command_updateMaterial(command) {
@@ -86,6 +94,7 @@
                 applyDepthTest(command.depthTest);
                 command.textureIndexes.forEach(applyTexture);
                 gl.uniform1iv(command.program.uniformLocations["texture"], [0, 1, 2, 3, 4, 5, 6, 7]);
+                bindMatrixTable();
             }
 
             function command_draw(command) {
@@ -108,9 +117,6 @@
                     );
                     gl.enableVertexAttribArray(attribLocations[type]);
                 });
-
-                var vertexMatrix = mat4.create();
-                gl.uniformMatrix4fv(uniformLocations["matrixTable"], false, vertexMatrix);
 
                 gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
                 gl.uniformMatrix4fv(uniformLocations["modelView"], false, modelView);
