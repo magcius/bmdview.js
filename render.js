@@ -111,7 +111,7 @@
                 });
 
                 var vertexMatrix = mat4.create();
-                gl.uniformMatrix4fv(uniformLocations["vertexMatrix"], false, vertexMatrix);
+                gl.uniformMatrix4fv(uniformLocations["matrixTable"], false, vertexMatrix);
 
                 gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
                 gl.uniformMatrix4fv(uniformLocations["modelView"], false, modelView);
@@ -417,9 +417,9 @@
         // We should always have position.
         uniforms.push("uniform mat4 u_modelView;");
         uniforms.push("uniform mat4 u_projection;");
-        uniforms.push("uniform mat4 u_vertexMatrix;");
+        uniforms.push("uniform mat4 u_matrixTable[1];");
 
-        main.push("gl_Position = u_projection * u_modelView * u_vertexMatrix * vec4(a_position, 1.0);");
+        main.push("gl_Position = u_projection * u_modelView * u_matrixTable[0] * vec4(a_position, 1.0);");
 
         function makeAttribute(attrib) {
             varyings.push("varying " + attrib.storage + " v_" + attrib.name + ";");
@@ -578,7 +578,7 @@
         gl.linkProgram(prog);
 
         prog.uniformLocations = {};
-        ["modelView", "projection", "vertexMatrix"].forEach(function(name) {
+        ["modelView", "projection", "matrixTable"].forEach(function(name) {
             prog.uniformLocations[name] = gl.getUniformLocation(prog, "u_" + name);
         });
 
