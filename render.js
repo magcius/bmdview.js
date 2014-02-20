@@ -647,6 +647,7 @@
                 case gx.CullMode.ALL:
                     cullInfo.enable = true;
                     cullInfo.face = gl.FRONT_AND_BACK;
+                    break;
             }
             return cullInfo;
         }
