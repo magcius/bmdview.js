@@ -24,15 +24,11 @@
         }
 
         function renderModel(model) {
-            var matrices = [];
             var attribLocations;
             var uniformLocations;
 
-            for (var i = 0; i < 10; i++)
-                matrices.push(mat4.create());
-
             function command_updateMatrix(command) {
-                matrices[command.idx] = command.matrix;
+                // Do nothing for now.
             }
 
             function command_updateMaterial(command) {
@@ -114,28 +110,13 @@
                     gl.enableVertexAttribArray(attribLocations[type]);
                 });
 
-                var matrixTable = [];
-                function updateMatrixTable(packet) {
-                    var updated = false;
-                    packet.matrixTable.forEach(function(idx, i) {
-                        if (idx == -1)
-                            return; // keep old
-
-                        if (matrixTable[i] != matrices[idx]) {
-                            matrixTable[i] = matrices[idx];
-                            updated = true;
-                        }
-                    });
-                    return updated;
-                }
+                var vertexMatrix = mat4.create();
+                gl.uniformMatrix4fv(uniformLocations["vertexMatrix"], false, vertexMatrix);
 
                 gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
                 gl.uniformMatrix4fv(uniformLocations["modelView"], false, modelView);
 
                 command.packets.forEach(function(packet) {
-                    if (updateMatrixTable(packet))
-                        gl.uniformMatrix4fv(uniformLocations["vertexMatrix"], false, matrixTable[0]);
-
                     packet.primitives.forEach(function(prim) {
                         gl.drawElements(
                             getPrimitiveType(prim.drawType), // mode
