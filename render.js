@@ -5,7 +5,7 @@
         var projection = mat4.create();
         mat4.perspective(projection, Math.PI / 4, gl.viewportWidth / gl.viewportHeight, 0.1*128, 2500*128);
 
-        var modelView = mat4.create();
+        var view = mat4.create();
 
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
         gl.clearColor(77/255, 50/255, 153/255, 1);
@@ -119,7 +119,7 @@
                 });
 
                 gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
-                gl.uniformMatrix4fv(uniformLocations["modelView"], false, modelView);
+                gl.uniformMatrix4fv(uniformLocations["view"], false, view);
 
                 command.packets.forEach(function(packet) {
                     packet.primitives.forEach(function(prim) {
@@ -167,7 +167,7 @@
             render();
         };
         scene.setCamera = function(matrix) {
-            mat4.copy(modelView, matrix);
+            mat4.invert(view, matrix);
             render();
         };
 
@@ -421,11 +421,11 @@
         var main = [];
 
         // We should always have position.
-        uniforms.push("uniform mat4 u_modelView;");
         uniforms.push("uniform mat4 u_projection;");
+        uniforms.push("uniform mat4 u_view;");
         uniforms.push("uniform mat4 u_matrixTable[8];");
 
-        main.push("gl_Position = u_projection * u_modelView * u_matrixTable[int(a_matrixIndex)] * vec4(a_position, 1.0);");
+        main.push("gl_Position = u_projection * u_view * u_matrixTable[int(a_matrixIndex)] * vec4(a_position, 1.0);");
 
         function makeAttribute(attrib) {
             varyings.push("varying " + attrib.storage + " v_" + attrib.name + ";");
@@ -584,7 +584,7 @@
         gl.linkProgram(prog);
 
         prog.uniformLocations = {};
-        ["modelView", "projection", "matrixTable", "texture"].forEach(function(name) {
+        ["projection", "view", "matrixTable", "texture"].forEach(function(name) {
             prog.uniformLocations[name] = gl.getUniformLocation(prog, "u_" + name);
         });
 
@@ -970,7 +970,7 @@
 
         var scene = createScene(gl);
         var camera = mat4.create();
-        mat4.translate(camera, camera, [0, 0, -4000]);
+        mat4.translate(camera, camera, [0, 1500, 4000]);
         scene.setCamera(camera);
 
         loadModel("faceship.bmd", function(stream, bmd) {
@@ -979,6 +979,7 @@
         });
 
         var keysDown = {};
+        var dragging = false, lx = 0, ly = 0;
         var SHIFT = 16;
 
         function isKeyDown(key) {
@@ -992,24 +993,47 @@
             delete keysDown[e.keyCode];
         });
 
+        window.addEventListener('mousedown', function(e) {
+            dragging = true;
+            lx = e.pageX; ly = e.pageY;
+        });
+        window.addEventListener('mouseup', function(e) {
+            dragging = false;
+        });
+        window.addEventListener('mousemove', function(e) {
+            if (!dragging)
+                return;
+
+            var dx = e.pageX - lx;
+            var dy = e.pageY - ly;
+            mat4.rotateY(camera, camera, -dx / 500);
+            mat4.rotateX(camera, camera, -dy / 500);
+            lx = e.pageX; ly = e.pageY;
+        });
+
         function update() {
-            var cameraVel = vec3.create();
-            var amount = 5;
+            var mult = 20;
             if (keysDown[SHIFT])
-                amount *= 10;
+                mult *= 10;
 
+            var amt;
+            amt = 0;
             if (isKeyDown('W'))
-                cameraVel[2] = amount;
-            if (isKeyDown('S'))
-                cameraVel[2] = -amount;
+                amt = -mult;
+            else if (isKeyDown('S'))
+                amt = mult;
+            var forward = [camera[8]*amt, camera[9]*amt, camera[10]*amt];
+            mat4.translate(camera, camera, forward);
+
+            amt = 0;
             if (isKeyDown('A'))
-                cameraVel[0] = amount;
-            if (isKeyDown('D'))
-                cameraVel[0] = -amount;
+                amt = -mult;
+            else if (isKeyDown('D'))
+                amt = mult;
+            var sideways = [camera[0]*amt, camera[1]*amt, camera[2]*amt];
+            mat4.translate(camera, camera, sideways);
 
-            mat4.translate(camera, camera, cameraVel);
             scene.setCamera(camera);
-
             window.requestAnimationFrame(update);
         }
 
