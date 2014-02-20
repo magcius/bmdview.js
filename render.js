@@ -79,14 +79,13 @@
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, texture.wrapT);
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, texture.minFilter);
                     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, texture.magFilter);
-
-                    gl.uniform1i(command.program.uniformLocations["texture[" + i + "]"], i);
                 }
 
                 applyBlendInfo(command.blendInfo);
                 applyCullInfo(command.cullInfo);
                 applyDepthTest(command.depthTest);
                 command.textureIndexes.forEach(applyTexture);
+                gl.uniform1iv(command.program.uniformLocations["texture"], [0, 1, 2, 3, 4, 5, 6, 7]);
             }
 
             function command_draw(command) {
@@ -578,7 +577,7 @@
         gl.linkProgram(prog);
 
         prog.uniformLocations = {};
-        ["modelView", "projection", "matrixTable"].forEach(function(name) {
+        ["modelView", "projection", "matrixTable", "texture"].forEach(function(name) {
             prog.uniformLocations[name] = gl.getUniformLocation(prog, "u_" + name);
         });
 
