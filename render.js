@@ -641,7 +641,7 @@
                     cullInfo.face = gl.FRONT;
                     break;
                 case gx.CullMode.BACK:
-                    cullInfo.enable = true;l
+                    cullInfo.enable = true;
                     cullInfo.face = gl.BACk;
                     break;
                 case gx.CullMode.ALL:
