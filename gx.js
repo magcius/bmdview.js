@@ -14,7 +14,7 @@
 	};
 
 	gx.VertexAttribute = {
-		PTNMTXIDX: 0,
+		PTMTXIDX: 0,
 		TEX0MTXIDX: 1,
 		TEX1MTXIDX: 2,
 		TEX2MTXIDX: 3,
@@ -214,6 +214,12 @@
 		LIN_MIP_NEAR: 3, /*!< Bilinear filtering, discrete mipmap */
 		NEAR_MIP_LIN: 4, /*!< Point sampling, linear mipmap */
 		LIN_MIP_LIN: 5, /*!< Trilinear filtering */
+	};
+
+	gx.WrapMode = {
+		CLAMP: 0,
+		REPEAT: 1,
+		MIRROR: 2,
 	};
 
 })(window);

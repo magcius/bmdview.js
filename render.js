@@ -850,11 +850,11 @@
 
         function translateWrapMode(mode) {
             switch (mode) {
-                case 0:
+                case gx.WrapMode.CLAMP:
                     return gl.CLAMP_TO_EDGE;
-                case 1:
+                case gx.WrapMode.REPEAT:
                     return gl.REPEAT;
-                case 2:
+                case gx.WrapMode.MIRROR:
                     return gl.MIRRORED_REPEAT;
             }
         }
