@@ -94,6 +94,9 @@
                 applyDepthTest(command.depthTest);
                 command.textureIndexes.forEach(applyTexture);
                 gl.uniform1iv(command.program.uniformLocations["texture"], [0, 1, 2, 3, 4, 5, 6, 7]);
+
+                gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
+                gl.uniformMatrix4fv(uniformLocations["view"], false, view);
                 bindMatrixTable();
             }
 
@@ -117,9 +120,6 @@
                     );
                     gl.enableVertexAttribArray(attribLocations[type]);
                 });
-
-                gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
-                gl.uniformMatrix4fv(uniformLocations["view"], false, view);
 
                 command.packets.forEach(function(packet) {
                     packet.primitives.forEach(function(prim) {
