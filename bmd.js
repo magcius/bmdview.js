@@ -272,15 +272,13 @@
             throw new Error("bad data");
 
         function readFrame(stream, i) {
-            var frame = {};
+            var frame = mat4.create();
 
             stream.pos += 4; // unk, pad
 
             var sx = readFloat(stream);
             var sy = readFloat(stream);
             var sz = readFloat(stream);
-
-            var frame = mat4.create();
 
             var rx = readSWord(stream) / 32768 * Math.PI;
             var ry = readSWord(stream) / 32768 * Math.PI;

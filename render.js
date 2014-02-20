@@ -29,14 +29,13 @@
 
             var matrixTable = new Float32Array(16 * 8);
 
-            function bindMatrixTable() {
-                if (uniformLocations)
-                    gl.uniformMatrix4fv(uniformLocations["matrixTable"], false, matrixTable);
-            }
+            function bindMatrixTable(packetMatrixTable) {
+                packetMatrixTable.forEach(function(matrixIdx, i) {
+                    var frame = model.joints[matrixIdx];
+                    matrixTable.set(frame, i * 16);
+                });
 
-            function command_updateMatrix(command) {
-                matrixTable.set(command.matrix, command.idx * 16);
-                bindMatrixTable();
+                gl.uniformMatrix4fv(uniformLocations["matrixTable"], false, matrixTable);
             }
 
             function command_updateMaterial(command) {
@@ -97,7 +96,6 @@
 
                 gl.uniformMatrix4fv(uniformLocations["projection"], false, projection);
                 gl.uniformMatrix4fv(uniformLocations["view"], false, view);
-                bindMatrixTable();
             }
 
             function command_draw(command) {
@@ -122,6 +120,8 @@
                 });
 
                 command.packets.forEach(function(packet) {
+                    bindMatrixTable(packet.matrixTable);
+
                     packet.primitives.forEach(function(prim) {
                         gl.drawElements(
                             getPrimitiveType(prim.drawType), // mode
@@ -144,7 +144,6 @@
             var dispatch = {
                 "draw": command_draw,
                 "updateMaterial": command_updateMaterial,
-                "updateMatrix": command_updateMatrix,
             };
 
             model.commands.forEach(function(command) {
@@ -915,6 +914,7 @@
             return translateTexture(gl, bmd, tex);
         });
 
+        var currentMatrix = mat4.create();
         bmd.inf1.entries.forEach(function(entry) {
             switch (entry.type) {
                 case 0x01: // open child, not needed
@@ -922,7 +922,8 @@
                     break;
                 case 0x10: // joint
                     var matrix = bmd.jnt1.frames[entry.index];
-                    model.commands.push({ type: "updateMatrix", idx: entry.index, matrix: matrix });
+                    mat4.mul(matrix, matrix, currentMatrix);
+                    currentMatrix = matrix;
                     break;
                 case 0x11: // material
                     var index = bmd.mat3.indexToMatIndex[entry.index];
@@ -935,6 +936,8 @@
                     break;
             }
         });
+
+        model.joints = bmd.jnt1.frames;
 
         return model;
     }
@@ -971,10 +974,11 @@
 
         var scene = createScene(gl);
         var camera = mat4.create();
-        mat4.translate(camera, camera, [0, 1500, 4000]);
+        mat4.lookAt(camera, [-20000, 3000, -8000], [0, 5000, 0], [0, 1, 0]);
+        mat4.invert(camera, camera);
         scene.setCamera(camera);
 
-        loadModel("faceship.bmd", function(stream, bmd) {
+        loadModel("noki.bmd", function(stream, bmd) {
             var model = modelFromBmd(gl, stream, bmd);
             scene.attachModel(model);
         });
