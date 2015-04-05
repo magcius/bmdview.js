@@ -222,4 +222,52 @@
 		MIRROR: 2,
 	};
 
+	gx.ColorSrc = {
+		REG: 0,
+		VTX: 1,
+	};
+
+	gx.TexGenSrc = {
+		POS: 0,
+		NRM: 1,
+		BINRM: 2,
+		TANGENT: 3,
+		TEX0: 4,
+		TEX1: 5,
+		TEX2: 6,
+		TEX3: 7,
+		TEX4: 8,
+		TEX5: 9,
+		TEX6: 10,
+		TEX7: 11,
+	};
+
+	gx.TexGenType = {
+		MTX3x4: 0,
+		MTX2x4: 1,
+		BUMP0: 2,
+		BUMP1: 3,
+		BUMP2: 4,
+		BUMP3: 5,
+		BUMP4: 6,
+		BUMP5: 7,
+		BUMP6: 8,
+		BUMP7: 9,
+		SRTG: 10,
+	};
+
+	gx.TexGenMatrix = {
+		IDENTITY: 60,
+		TEXMTX0: 30,
+		TEXMTX1: 33,
+		TEXMTX2: 36,
+		TEXMTX3: 39,
+		TEXMTX4: 42,
+		TEXMTX5: 45,
+		TEXMTX6: 48,
+		TEXMTX7: 51,
+		TEXMTX8: 54,
+		TEXMTX9: 57,
+	};
+
 })(window);

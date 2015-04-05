@@ -597,6 +597,35 @@
         stream.pos = mat3.offset + mat3.offsets[0];
         mat3.materials = collect(stream, parseMatEntry, maxIndex + 1);
 
+        mat3.cullModes = readSection(stream, 4, readLong, 4);
+
+        function parseColorChanInfos(stream) {
+            var entry = {};
+            entry.enable = readByte(stream);
+            entry.matColorSource = readByte(stream);
+            entry.litMask = readByte(stream);
+            entry.diffuseAttenuationFunc = readByte(stream);
+            entry.attenuationFunc = readByte(stream);
+            entry.ambColorSource = readByte(stream);
+            stream.pos += 2;
+            return entry;
+        }
+
+        mat3.colorChanInfos = readSection(stream, 7, parseColorChanInfos, 8);
+
+        mat3.texGenCounts = readSection(stream, 10, readByte, 1);
+
+        function parseTexGenInfo(stream) {
+            var entry = {};
+            entry.texGenType = readByte(stream);
+            entry.texGenSrc = readByte(stream);
+            entry.matrix = readByte(stream);
+            entry.pad = readByte(stream);
+            return entry;
+        }
+
+        mat3.texGenInfos = readSection(stream, 11, parseTexGenInfo, 4);
+
         function parseTexMtxInfo(stream) {
             var texMtxInfo = {};
             stream.pos += 4; // unk, pad
@@ -606,8 +635,6 @@
             texMtxInfo.f3 = collect(stream, readFloat, 16);
             return texMtxInfo;
         }
-
-        mat3.cullModes = readSection(stream, 4, readLong, 4);
 
         mat3.texMtxInfos = readSection(stream, 13, parseTexMtxInfo, 100);
         mat3.texStageIndexToTextureIndex = readSection(stream, 15, readWord, 2);

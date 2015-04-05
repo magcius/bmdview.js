@@ -110,6 +110,8 @@
                     var type = attrib.type;
                     if (attribLocations[type] === undefined)
                         return; // TODO: this attribute
+                    if (attribLocations[type] === -1)
+                        return; // Unused in the shader.
 
                     gl.vertexAttribPointer(
                         attribLocations[type],         // location
@@ -139,6 +141,8 @@
                     var type = attrib.type;
                     if (attribLocations[type] === undefined)
                         return; // TODO: this attribute
+                    if (attribLocations[type] === -1)
+                        return; // Unused in the shader.
 
                     gl.disableVertexAttribArray(attribLocations[type]);
                 });
@@ -403,6 +407,7 @@
     // Vertex attrib types we care about
     var vertexAttribs = [
         { storage: "float", type: gx.VertexAttribute.PTNMTXIDX, name: "matrixIndex" },
+        { storage: "vec3", type: gx.VertexAttribute.NRM,  name: "normal" },
         { storage: "vec3", type: gx.VertexAttribute.POS,  name: "position" },
         { storage: "vec4", type: gx.VertexAttribute.CLR0, name: "color0" },
         { storage: "vec4", type: gx.VertexAttribute.CLR1, name: "color1" },
@@ -416,7 +421,34 @@
         { storage: "vec2", type: gx.VertexAttribute.TEX7, name: "texCoord7" },
     ];
 
-    function generateVertShader() {
+    function getTexGenSrc(texGenSrc) {
+        switch (texGenSrc) {
+            case gx.TexGenSrc.POS:
+                return "vec4(v_position, 0.0);";
+            case gx.TexGenSrc.NRM:
+                return "vec4(v_normal, 0.0)";
+            case gx.TexGenSrc.TEX0:
+            case gx.TexGenSrc.TEX1:
+            case gx.TexGenSrc.TEX2:
+            case gx.TexGenSrc.TEX3:
+            case gx.TexGenSrc.TEX4:
+            case gx.TexGenSrc.TEX5:
+            case gx.TexGenSrc.TEX6:
+            case gx.TexGenSrc.TEX7:
+                return "vec4(a_texCoord" + (texGenSrc - gx.TexGenSrc.TEX0) + ", 0.0, 0.0)";
+            case gx.TexGenSrc.BINRM:
+            case gx.TexGenSrc.TANGENT:
+                console.warn("Unsupported TexGenSrc", texGenSrc);
+                return "vec4(v_position, 0.0);";
+        }
+    }
+
+    function colorVec(color) {
+        return glslCall("vec4", color);
+    }
+
+    function generateVertShader(bmd, material) {
+        var mat3 = bmd.mat3;
         var uniforms = [];
         var varyings = [];
         var attributes = [];
@@ -432,9 +464,39 @@
         function makeAttribute(attrib) {
             varyings.push("varying " + attrib.storage + " v_" + attrib.name + ";");
             attributes.push("attribute " + attrib.storage + " a_" + attrib.name + ";");
-            main.push("v_" + attrib.name + " = a_" + attrib.name + ";");
         }
         vertexAttribs.forEach(makeAttribute);
+
+        main.push("v_matrixIndex = a_matrixIndex;");
+        main.push("v_position = a_position;");
+        main.push("v_normal = a_normal;");
+
+        for (var i = 0; i < 2; i++) {
+            var colorChanInfo = mat3.colorChanInfos[material.chanControls[i]];
+            var value = '';
+            if (colorChanInfo.matColorSource == gx.ColorSrc.REG)
+                value = colorVec(mat3.color1[material.color1[i]]);
+            else if (colorChanInfo.matColorSource == gx.ColorSrc.VTX)
+                value = "a_color" + i;
+
+            main.push("v_color" + i + " = " + value + ";");
+
+            // XXX: We need proper lighting at some point.
+            if (colorChanInfo.enable)
+                main.push("v_color.rgb *= 0.5;");
+        }
+
+        for (var i = 0; i < mat3.texGenCounts[material.texGenCountIndex]; i++) {
+            var texGenInfo = mat3.texGenInfos[material.texGenInfo[i]];
+
+            // XXX: use TexGenType at some point? How does that work?
+
+            var matrix = texGenInfo.matrix;
+            var value = "";
+            value += getTexGenSrc(texGenInfo.texGenSrc);
+
+            main.push("v_texCoord" + i + " = " + value + ".st;");
+        }
 
         var decls = [];
         decls.push.apply(decls, uniforms);
@@ -461,10 +523,6 @@
         vertexAttribs.forEach(makeAttribute);
 
         uniforms.push("uniform sampler2D texture[8];");
-
-        function colorVec(color) {
-            return glslCall("vec4", color);
-        }
 
         // Check what we need.
         var needKonst = [false, false, false, false];
@@ -569,13 +627,9 @@
         return shader;
     }
 
-    var vertShader = null;
-
     function generateMaterialProgram(gl, bmd, material) {
-        if (!vertShader) {
-            var vert = generateVertShader();
-            vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
-        }
+        var vert = generateVertShader(bmd, material);
+        var vertShader = compileShader(gl, vert, gl.VERTEX_SHADER);
 
         var frag = generateFragShader(bmd, material);
         var fragShader = compileShader(gl, frag, gl.FRAGMENT_SHADER);
