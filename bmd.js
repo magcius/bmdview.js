@@ -1035,6 +1035,13 @@
         return tex1;
     }
 
+    function parseMDL3(stream) {
+        // Compiled model display list, which simply pokes GX
+        // directly. We can't use this, but we have this here
+        // to prevent a warning.
+        return null;
+    }
+
     function parseBMD(stream) {
         stream.pos = 0x20; // skip header
 
@@ -1047,6 +1054,7 @@
             "SHP1": parseSHP1,
             "MAT3": parseMAT3,
             "TEX1": parseTEX1,
+            "MDL3", parseMDL3,
         };
 
         function parseEntryHeader() {
