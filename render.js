@@ -1016,7 +1016,7 @@
             var dx = e.pageX - lx;
             var dy = e.pageY - ly;
             var cu = [camera[1], camera[5], camera[9]];
-            vec3.normalize(cr, cr);
+            vec3.normalize(cu, cu);
             mat4.rotate(camera, camera, -dx / 500, cu);
             mat4.rotate(camera, camera, -dy / 500, [1, 0, 0]);
             lx = e.pageX; ly = e.pageY;
