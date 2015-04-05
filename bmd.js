@@ -878,7 +878,19 @@
         }
 
         function readIA4(dst, src, w, h) {
-            console.warn("Unsupported texture: IA4");
+            var si = 0;
+
+            for (var y = 0; y < h; y += 8)
+                for (var x = 0; x < w; x += 8)
+                    for (var dy = 0; dy < 8; dy++)
+                        for (var dx = 0; dx < 16; dx += 2, si++) {
+                            // http://www.mindcontrol.org/~hplus/graphics/expand-bits.html
+                            var t;
+                            t = (src[si] & 0x0F);
+                            dst[w*(y + dy) + x + dx] = (t << 4) | t;
+                            t = (src[si] & 0xF0);
+                            dst[w*(y + dy) + x + dx + 1] = t | (t >> 4);
+                        }
         }
 
         function readIA8(dst, src, w, h) {
