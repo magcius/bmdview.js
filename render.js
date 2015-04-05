@@ -1030,6 +1030,7 @@
         "exk/noki.bmd",
         "exk/faceship.bmd",
         "exk/plaza.bmd",
+        "exk/sirena.bmd",
     ];
 
     window.addEventListener('load', function() {
