@@ -1054,7 +1054,7 @@
             "SHP1": parseSHP1,
             "MAT3": parseMAT3,
             "TEX1": parseTEX1,
-            "MDL3", parseMDL3,
+            "MDL3": parseMDL3,
         };
 
         function parseEntryHeader() {
