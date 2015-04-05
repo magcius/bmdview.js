@@ -24,7 +24,7 @@
         }
 
         function renderModel(model) {
-            if (model.hidden)
+            if (!model.visible)
                 return;
 
             var attribLocations;
@@ -1067,7 +1067,7 @@
                 visible = !visible;
                 if (visible && !model) {
                     loadModel(filename, function(stream, bmd) {
-                        var model = modelFromBmd(gl, stream, bmd);
+                        model = modelFromBmd(gl, stream, bmd);
                         model.visible = visible;
                         scene.attachModel(model);
                     });
