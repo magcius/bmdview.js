@@ -951,9 +951,10 @@
                     jointStack.shift();
                     break;
                 case 0x10: // joint
-                    var matrix = joints[entry.index] = mat4.clone(bmd.jnt1.frames[entry.index]);
-                    if (jointStack.length > 0)
-                        mat4.mul(matrix, matrix, joints[jointStack[0]]);
+                    var matrix = mat4.clone(bmd.jnt1.frames[entry.index]);
+                    if (jointStack.length > 1)
+                        mat4.mul(matrix, joints[jointStack[1]], matrix);
+                    joints[entry.index] = matrix;
                     jointStack[0] = entry.index;
                     break;
                 case 0x11: // material
@@ -968,7 +969,7 @@
             }
         });
 
-        model.joints = bmd.jnt1.frames;
+        model.joints = joints;
 
         return model;
     }
