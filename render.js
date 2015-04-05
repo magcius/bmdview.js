@@ -940,7 +940,7 @@
             return translateTexture(gl, bmd, tex);
         });
 
-        var currentMatrix = mat4.create();
+        var currentJoint = -1;
         var joints = [];
         bmd.inf1.entries.forEach(function(entry) {
             switch (entry.type) {
@@ -949,8 +949,9 @@
                     break;
                 case 0x10: // joint
                     var matrix = joints[entry.index] = mat4.clone(bmd.jnt1.frames[entry.index]);
-                    mat4.mul(matrix, matrix, currentMatrix);
-                    currentMatrix = matrix;
+                    if (currentJoint > -1)
+                        mat4.mul(matrix, matrix, joints[currentJoint]);
+                    currentJoint = entry.index;
                     break;
                 case 0x11: // material
                     var index = bmd.mat3.indexToMatIndex[entry.index];
