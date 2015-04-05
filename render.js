@@ -996,6 +996,40 @@
         checkS3TC();
     }
 
+    var ModelSets = {
+        'default':  ["exk/kindan/Room14.d/bdl/model.bdl",
+                     "exk/kindan/Room14.d/bdl/model1.bdl"],
+        'kindan':   ["exk/kindan/Room0.d/bdl/model.bdl",
+                     "exk/kindan/Room0.d/bdl/model3.bdl",
+                     "exk/kindan/Room1.d/bdl/model.bdl",
+                     "exk/kindan/Room11.d/bdl/model.bdl",
+                     "exk/kindan/Room11.d/bdl/model1.bdl",
+                     "exk/kindan/Room12.d/bdl/model.bdl",
+                     "exk/kindan/Room12.d/bdl/model1.bdl",
+                     "exk/kindan/Room13.d/bdl/model.bdl",
+                     "exk/kindan/Room14.d/bdl/model.bdl",
+                     "exk/kindan/Room14.d/bdl/model1.bdl",
+                     "exk/kindan/Room15.d/bdl/model.bdl",
+                     "exk/kindan/Room16.d/bdl/model.bdl",
+                     "exk/kindan/Room16.d/bdl/model1.bdl",
+                     "exk/kindan/Room16.d/bdl/model3.bdl",
+                     "exk/kindan/Room2.d/bdl/model.bdl",
+                     "exk/kindan/Room3.d/bdl/model.bdl",
+                     "exk/kindan/Room4.d/bdl/model.bdl",
+                     "exk/kindan/Room5.d/bdl/model.bdl",
+                     "exk/kindan/Room5.d/bdl/model1.bdl",
+                     "exk/kindan/Room6.d/bdl/model.bdl",
+                     "exk/kindan/Room7.d/bdl/model.bdl",
+                     "exk/kindan/Room8.d/bdl/model.bdl",
+                     "exk/kindan/Room8.d/bdl/model1.bdl",
+                     "exk/kindan/Room9.d/bdl/model.bdl",
+                     "exk/kindan/Room9.d/bdl/model3.bdl"],
+        'outset':   ["exk/outset.bdl"],
+        'noki':     ["exk/noki.bmd"],
+        'faceship': ["exk/faceship.bmd"],
+        'plaza':    ["exk/plaza.bmd"],
+    };
+
     window.addEventListener('load', function() {
         var canvas = document.querySelector("#scene");
         var gl = canvas.getContext("experimental-webgl", { alpha: false });
@@ -1010,15 +1044,16 @@
         mat4.rotateY(camera, camera, -1);
         scene.setCamera(camera);
 
-        var models = ['room14.bmd', 'room14b.bmd'];
+        var ms = 'default';
         var h = location.hash.slice(1);
         if (h.endsWith('!')) {
             dumpTextures = false;
             h = h.slice(0, -1);
         }
         if (h)
-            models = h.split(',');
+            ms = h;
 
+        var models = ModelSets[ms];
         models.forEach(function(m) {
             loadModel(m, function(stream, bmd) {
                 var model = modelFromBmd(gl, stream, bmd);
@@ -1062,10 +1097,15 @@
         });
 
         var tmp = mat4.create();
-        function update() {
+        var t = 0;
+        function update(nt) {
+            var dt = nt - t;
+            t = nt;
+
             var mult = 20;
             if (keysDown[SHIFT])
                 mult *= 10;
+            mult *= (dt / 16.0);
 
             var amt;
             amt = 0;
@@ -1091,8 +1131,7 @@
             window.requestAnimationFrame(update);
         }
 
-        update();
-
+        update(0);
     });
 
 })();
