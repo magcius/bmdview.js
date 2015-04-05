@@ -254,7 +254,7 @@
         drw1.isWeighted = collect(stream, readByte, drw1.count);
 
         stream.pos = drw1.offset + drw1.offsetToData;
-        drw1.data = collect(stream, readByte, drw1.count);
+        drw1.data = collect(stream, readWord, drw1.count);
         return drw1;
     }
 
@@ -446,9 +446,9 @@
             stream.pos = shp1.offset + shp1.offsetToMatrixData + (batch.firstMatrixData + idx) * 8;
             stream.pos += 2; // unk
             var matrixCount = readWord(stream);
-            var firstMatrixIndex = readWord(stream);
+            var firstMatrixIndex = readLong(stream);
 
-            stream.pos = shp1.offset + shp1.offsetToMatrixTable + (firstMatrixIndex + idx) * 2;
+            stream.pos = shp1.offset + shp1.offsetToMatrixTable + firstMatrixIndex*2;
             var matrixIndexes = collect(stream, readWord, matrixCount);
             var matrixTable = matrixIndexes.map(function(index) {
                 // Special code to keep last matrix when updating the tables.
