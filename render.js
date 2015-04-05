@@ -854,14 +854,18 @@
         return d;
     }
 
+    var dumpTextures = true;
+
     // Set by checkExtensions
     var COMPRESSED_RGB_S3TC_DXT1_EXT = null;
 
     function translateTexture(gl, bmd, texture) {
         var out = {};
 
-        var txc = document.querySelector('#textures');
-        txc.appendChild(textureToDOM(texture));
+        if (dumpTextures) {
+            var txc = document.querySelector('#textures');
+            txc.appendChild(textureToDOM(texture));
+        }
 
         var texId = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texId);
@@ -1000,14 +1004,21 @@
         mat4.rotateY(camera, camera, -1);
         scene.setCamera(camera);
 
-        loadModel("room14.bmd", function(stream, bmd) {
-            var model = modelFromBmd(gl, stream, bmd);
-            scene.attachModel(model);
-        });
-        loadModel("room14b.bmd", function(stream, bmd) {
-            var model = modelFromBmd(gl, stream, bmd);
-            scene.attachModel(model);
-        });
+        var models = ['room14.bmd', 'room14b.bmd'];
+        var h = location.hash.slice(1);
+        if (h.endsWith('!')) {
+            dumpTextures = false;
+            h = h.slice(0, -1);
+        }
+        if (h)
+            models = h.split(',');
+
+        models.forEach(function(m) {
+            loadModel(m, function(stream, bmd) {
+                var model = modelFromBmd(gl, stream, bmd);
+                scene.attachModel(model);
+            });
+        })
 
         var keysDown = {};
         var dragging = false, lx = 0, ly = 0;
@@ -1064,6 +1075,9 @@
             else if (isKeyDown('D'))
                 amt = mult;
             tmp[12] = amt;
+
+            if (isKeyDown('B'))
+                mat4.identity(camera);
 
             mat4.multiply(camera, camera, tmp);
 
