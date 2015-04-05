@@ -24,6 +24,9 @@
         }
 
         function renderModel(model) {
+            if (model.hidden)
+                return;
+
             var attribLocations;
             var uniformLocations;
 
@@ -934,6 +937,7 @@
 
     function modelFromBmd(gl, stream, bmd) {
         var model = {};
+        model.filename = bmd.filename;
         model.commands = [];
 
         model.textures = bmd.tex1.textures.map(function(tex) {
@@ -996,39 +1000,37 @@
         checkS3TC();
     }
 
-    var ModelSets = {
-        'default':  ["exk/kindan/Room14.d/bdl/model.bdl",
-                     "exk/kindan/Room14.d/bdl/model1.bdl"],
-        'kindan':   ["exk/kindan/Room0.d/bdl/model.bdl",
-                     "exk/kindan/Room0.d/bdl/model3.bdl",
-                     "exk/kindan/Room1.d/bdl/model.bdl",
-                     "exk/kindan/Room11.d/bdl/model.bdl",
-                     "exk/kindan/Room11.d/bdl/model1.bdl",
-                     "exk/kindan/Room12.d/bdl/model.bdl",
-                     "exk/kindan/Room12.d/bdl/model1.bdl",
-                     "exk/kindan/Room13.d/bdl/model.bdl",
-                     "exk/kindan/Room14.d/bdl/model.bdl",
-                     "exk/kindan/Room14.d/bdl/model1.bdl",
-                     "exk/kindan/Room15.d/bdl/model.bdl",
-                     "exk/kindan/Room16.d/bdl/model.bdl",
-                     "exk/kindan/Room16.d/bdl/model1.bdl",
-                     "exk/kindan/Room16.d/bdl/model3.bdl",
-                     "exk/kindan/Room2.d/bdl/model.bdl",
-                     "exk/kindan/Room3.d/bdl/model.bdl",
-                     "exk/kindan/Room4.d/bdl/model.bdl",
-                     "exk/kindan/Room5.d/bdl/model.bdl",
-                     "exk/kindan/Room5.d/bdl/model1.bdl",
-                     "exk/kindan/Room6.d/bdl/model.bdl",
-                     "exk/kindan/Room7.d/bdl/model.bdl",
-                     "exk/kindan/Room8.d/bdl/model.bdl",
-                     "exk/kindan/Room8.d/bdl/model1.bdl",
-                     "exk/kindan/Room9.d/bdl/model.bdl",
-                     "exk/kindan/Room9.d/bdl/model3.bdl"],
-        'outset':   ["exk/outset.bdl"],
-        'noki':     ["exk/noki.bmd"],
-        'faceship': ["exk/faceship.bmd"],
-        'plaza':    ["exk/plaza.bmd"],
-    };
+    var MODELS = [
+        "exk/kindan/Room0.d/bdl/model.bdl",
+        "exk/kindan/Room0.d/bdl/model3.bdl",
+        "exk/kindan/Room1.d/bdl/model.bdl",
+        "exk/kindan/Room2.d/bdl/model.bdl",
+        "exk/kindan/Room3.d/bdl/model.bdl",
+        "exk/kindan/Room4.d/bdl/model.bdl",
+        "exk/kindan/Room5.d/bdl/model.bdl",
+        "exk/kindan/Room5.d/bdl/model1.bdl",
+        "exk/kindan/Room6.d/bdl/model.bdl",
+        "exk/kindan/Room7.d/bdl/model.bdl",
+        "exk/kindan/Room8.d/bdl/model.bdl",
+        "exk/kindan/Room8.d/bdl/model1.bdl",
+        "exk/kindan/Room9.d/bdl/model.bdl",
+        "exk/kindan/Room9.d/bdl/model3.bdl",
+        "exk/kindan/Room11.d/bdl/model.bdl",
+        "exk/kindan/Room11.d/bdl/model1.bdl",
+        "exk/kindan/Room12.d/bdl/model.bdl",
+        "exk/kindan/Room12.d/bdl/model1.bdl",
+        "exk/kindan/Room13.d/bdl/model.bdl",
+        "! exk/kindan/Room14.d/bdl/model.bdl",
+        "! exk/kindan/Room14.d/bdl/model1.bdl",
+        "exk/kindan/Room15.d/bdl/model.bdl",
+        "exk/kindan/Room16.d/bdl/model.bdl",
+        "exk/kindan/Room16.d/bdl/model1.bdl",
+        "exk/kindan/Room16.d/bdl/model3.bdl",
+        "exk/outset.bdl",
+        "exk/noki.bmd",
+        "exk/faceship.bmd",
+        "exk/plaza.bmd",
+    ];
 
     window.addEventListener('load', function() {
         var canvas = document.querySelector("#scene");
@@ -1044,21 +1046,50 @@
         mat4.rotateY(camera, camera, -1);
         scene.setCamera(camera);
 
-        var ms = 'default';
         var h = location.hash.slice(1);
         if (h.endsWith('!')) {
             dumpTextures = false;
             h = h.slice(0, -1);
         }
-        if (h)
-            ms = h;
 
-        var models = ModelSets[ms];
-        models.forEach(function(m) {
-            loadModel(m, function(stream, bmd) {
-                var model = modelFromBmd(gl, stream, bmd);
-                scene.attachModel(model);
-            });
+        function modelDOM(filename, dv) {
+            var li = document.createElement('li');
+            var label = document.createElement('label');
+            var option = document.createElement('input');
+            option.type = 'checkbox';
+            option.checked = dv;
+            label.appendChild(option);
+            label.appendChild(document.createTextNode(filename));
+            li.appendChild(label);
+
+            var model = null, visible = false;
+            function toggle() {
+                visible = !visible;
+                if (visible && !model) {
+                    loadModel(filename, function(stream, bmd) {
+                        var model = modelFromBmd(gl, stream, bmd);
+                        model.visible = visible;
+                        scene.attachModel(model);
+                    });
+                }
+                if (model)
+                    model.visible = visible;
+            }
+            if (dv)
+                toggle();
+            option.addEventListener('change', toggle);
+
+            return li;
+        }
+
+        var mct = document.querySelector('#models');
+        MODELS.forEach(function(m) {
+            var dv = false;
+            if (m.startsWith('! ')) {
+                dv = true;
+                m = m.slice(2);
+            }
+            mct.appendChild(modelDOM(m, dv));
         })
 
         var keysDown = {};

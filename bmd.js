@@ -1089,6 +1089,7 @@
         req.onload = function(trackerFile) {
             var stream = makeStream(req.response);
             var bmd = parseBMD(stream);
+            bmd.filename = filename;
             callback(stream, bmd);
         };
     }
