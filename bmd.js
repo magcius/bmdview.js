@@ -1020,6 +1020,7 @@
             readImage(dst, src, palette, w, h, header.format);
 
             return { pixels: dst,
+                     name: header.name,
                      wrapS: header.wrapS,
                      wrapT: header.wrapT,
                      minFilter: header.minFilter,

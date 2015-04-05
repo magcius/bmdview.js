@@ -3,9 +3,11 @@
   <head>
     <meta charset="utf8">
     <title>bmdview.js</title>
+    <style> #textures div { float: left; padding: .5em; } #textures span { display: block; text-align: center; } </style>
   </head>
   <body>
-    <canvas width="1368" height="768"></canvas>
+    <canvas id="scene" width="1368" height="768"></canvas>
+    <h2>Textures</h2><div id="textures"></div>
 
     <script src="https://rawgit.com/toji/gl-matrix/master/dist/gl-matrix-min.js"></script>
     <script src="gx.js"></script>

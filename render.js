@@ -826,6 +826,13 @@
                 imgData.data[di+2] = texture.pixels[si];
                 imgData.data[di+3] = 255;
             }
+        } else if (texture.format == "i8_a8") {
+            for (var si = 0, di = 0; di < imgData.data.length; si += 2, di += 4) {
+                imgData.data[di+0] = texture.pixels[si];
+                imgData.data[di+1] = texture.pixels[si];
+                imgData.data[di+2] = texture.pixels[si];
+                imgData.data[di+3] = texture.pixels[si + 1];
+            }
         } else if (texture.format == "rgba8") {
             for (var i = 0; i < imgData.data.length; i++)
                 imgData.data[i] = texture.pixels[i];
@@ -837,11 +844,24 @@
         return canvas;
     }
 
+    function textureToDOM(texture) {
+        var d = document.createElement('div');
+        var canvas = textureToCanvas(texture);
+        d.appendChild(canvas);
+        var p = document.createElement('span');
+        p.textContent = texture.name;
+        d.appendChild(p);
+        return d;
+    }
+
     // Set by checkExtensions
     var COMPRESSED_RGB_S3TC_DXT1_EXT = null;
 
     function translateTexture(gl, bmd, texture) {
         var out = {};
+
+        var txc = document.querySelector('#textures');
+        txc.appendChild(textureToDOM(texture));
 
         var texId = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texId);
@@ -883,6 +903,8 @@
         var format;
         if (texture.format == "i8") {
             format = gl.LUMINANCE;
+        } else if (texture.format == "i8_a8") {
+            format = gl.LUMINANCE_ALPHA;
         } else if (texture.format == "rgba8") {
             format = gl.RGBA;
         } else if (texture.format == "dxt1" && COMPRESSED_RGB_S3TC_DXT1_EXT !== null) {
@@ -965,7 +987,7 @@
     }
 
     window.addEventListener('load', function() {
-        var canvas = document.querySelector("canvas");
+        var canvas = document.querySelector("#scene");
         var gl = canvas.getContext("experimental-webgl");
         gl.viewportWidth = canvas.width;
         gl.viewportHeight = canvas.height;
@@ -1002,14 +1024,14 @@
             delete keysDown[e.keyCode];
         });
 
-        window.addEventListener('mousedown', function(e) {
+        canvas.addEventListener('mousedown', function(e) {
             dragging = true;
             lx = e.pageX; ly = e.pageY;
         });
-        window.addEventListener('mouseup', function(e) {
+        canvas.addEventListener('mouseup', function(e) {
             dragging = false;
         });
-        window.addEventListener('mousemove', function(e) {
+        canvas.addEventListener('mousemove', function(e) {
             if (!dragging)
                 return;
 
