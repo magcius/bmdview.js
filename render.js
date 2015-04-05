@@ -992,7 +992,7 @@
 
     window.addEventListener('load', function() {
         var canvas = document.querySelector("#scene");
-        var gl = canvas.getContext("experimental-webgl");
+        var gl = canvas.getContext("experimental-webgl", { alpha: false });
         gl.viewportWidth = canvas.width;
         gl.viewportHeight = canvas.height;
 
