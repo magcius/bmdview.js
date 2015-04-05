@@ -8,7 +8,7 @@
         var view = mat4.create();
 
         gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
-        gl.clearColor(77/255, 50/255, 153/255, 1);
+        gl.clearColor(200/255, 50/255, 153/255, 1);
 
         gl.enable(gl.DEPTH_TEST);
         gl.enable(gl.CULL_FACE);
@@ -974,11 +974,15 @@
 
         var scene = createScene(gl);
         var camera = mat4.create();
-        mat4.lookAt(camera, [-20000, 3000, -8000], [0, 5000, 0], [0, 1, 0]);
-        mat4.invert(camera, camera);
+        mat4.translate(camera, camera, [4854, 626, -4353]);
+        mat4.rotateY(camera, camera, -1);
         scene.setCamera(camera);
 
-        loadModel("noki.bmd", function(stream, bmd) {
+        loadModel("room14.bmd", function(stream, bmd) {
+            var model = modelFromBmd(gl, stream, bmd);
+            scene.attachModel(model);
+        });
+        loadModel("room14b.bmd", function(stream, bmd) {
             var model = modelFromBmd(gl, stream, bmd);
             scene.attachModel(model);
         });
@@ -1016,6 +1020,7 @@
             lx = e.pageX; ly = e.pageY;
         });
 
+        var tmp = mat4.create();
         function update() {
             var mult = 20;
             if (keysDown[SHIFT])
@@ -1027,16 +1032,16 @@
                 amt = -mult;
             else if (isKeyDown('S'))
                 amt = mult;
-            var forward = [camera[8]*amt, camera[9]*amt, camera[10]*amt];
-            mat4.translate(camera, camera, forward);
+            tmp[14] = amt;
 
             amt = 0;
             if (isKeyDown('A'))
                 amt = -mult;
             else if (isKeyDown('D'))
                 amt = mult;
-            var sideways = [camera[0]*amt, camera[1]*amt, camera[2]*amt];
-            mat4.translate(camera, camera, sideways);
+            tmp[12] = amt;
+
+            mat4.multiply(camera, camera, tmp);
 
             scene.setCamera(camera);
             window.requestAnimationFrame(update);
