@@ -940,18 +940,21 @@
             return translateTexture(gl, bmd, tex);
         });
 
-        var currentJoint = -1;
         var joints = [];
+        var jointStack = [];
         bmd.inf1.entries.forEach(function(entry) {
             switch (entry.type) {
-                case 0x01: // open child, not needed
-                case 0x02: // close child, not needed
+                case 0x01: // open child
+                    jointStack.unshift(jointStack[0]);
+                    break;
+                case 0x02: // close child
+                    jointStack.shift();
                     break;
                 case 0x10: // joint
                     var matrix = joints[entry.index] = mat4.clone(bmd.jnt1.frames[entry.index]);
-                    if (currentJoint > -1)
-                        mat4.mul(matrix, matrix, joints[currentJoint]);
-                    currentJoint = entry.index;
+                    if (jointStack.length > 0)
+                        mat4.mul(matrix, matrix, joints[jointStack[0]]);
+                    jointStack[0] = entry.index;
                     break;
                 case 0x11: // material
                     var index = bmd.mat3.indexToMatIndex[entry.index];
