@@ -941,13 +941,14 @@
         });
 
         var currentMatrix = mat4.create();
+        var joints = [];
         bmd.inf1.entries.forEach(function(entry) {
             switch (entry.type) {
                 case 0x01: // open child, not needed
                 case 0x02: // close child, not needed
                     break;
                 case 0x10: // joint
-                    var matrix = bmd.jnt1.frames[entry.index];
+                    var matrix = joints[entry.index] = mat4.clone(bmd.jnt1.frames[entry.index]);
                     mat4.mul(matrix, matrix, currentMatrix);
                     currentMatrix = matrix;
                     break;
