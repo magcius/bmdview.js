@@ -1074,12 +1074,14 @@
         "exk/kindan/Room12.d/bdl/model.bdl",
         "exk/kindan/Room12.d/bdl/model1.bdl",
         "exk/kindan/Room13.d/bdl/model.bdl",
-        "! exk/kindan/Room14.d/bdl/model.bdl",
-        "! exk/kindan/Room14.d/bdl/model1.bdl",
+        "exk/kindan/Room14.d/bdl/model.bdl",
+        "exk/kindan/Room14.d/bdl/model1.bdl",
         "exk/kindan/Room15.d/bdl/model.bdl",
         "exk/kindan/Room16.d/bdl/model.bdl",
         "exk/kindan/Room16.d/bdl/model1.bdl",
         "exk/kindan/Room16.d/bdl/model3.bdl",
+        "! exk/kenroom/Room0.d/bdl/model.bdl",
+        "! exk/kenroom/Room0.d/bdl/model1.bdl",
         "exk/outset.bdl",
         "exk/noki.bmd",
         "exk/faceship.bmd",
@@ -1097,8 +1099,7 @@
 
         var scene = createScene(gl);
         var camera = mat4.create();
-        mat4.translate(camera, camera, [4854, 626, -4353]);
-        mat4.rotateY(camera, camera, -1);
+        mat4.translate(camera, camera, [-149, -2510, -4353]);
         scene.setCamera(camera);
 
         var h = location.hash.slice(1);
@@ -1210,6 +1211,8 @@
 
             if (isKeyDown('B'))
                 mat4.identity(camera);
+            if (isKeyDown('C'))
+                console.log(camera);
 
             mat4.multiply(camera, camera, tmp);
 
