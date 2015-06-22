@@ -37,6 +37,15 @@
 		TEX7: 20,
 	};
 
+	gx.CompCnt = {
+		POS_XY: 0,
+	    POS_XYZ: 1,
+	    CLR_RGB: 0,
+	    CLR_RGBA: 1,
+	    TEX_S: 0,
+	    TEX_ST: 1
+	};
+
 	gx.CompType = {
 		U8: 0,
 	    S8: 1,

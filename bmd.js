@@ -115,9 +115,9 @@
         function getItemSize(format) {
             switch (format.attrib) {
                 case gx.VertexAttribute.POS:
-                    if (format.componentCount == 0) // xy
+                    if (format.componentCount == gx.CompCnt.POS_XY)
                         return 2;
-                    else if (format.componentCount == 1) // xyz
+                    else if (format.componentCount == gx.CompCnt.POS_XYZ)
                         return 3;
                     break;
                 case gx.VertexAttribute.NRM:
@@ -125,9 +125,9 @@
                     break;
                 case gx.VertexAttribute.CLR0:
                 case gx.VertexAttribute.CLR1:
-                    if (format.componentCount == 0) // rgb
+                    if (format.componentCount == gx.CompCnt.CLR_RGB)
                         return 3;
-                    else if (format.componentCount == 1) // rgba
+                    else if (format.componentCount == gx.CompCnt.CLR_RGBA)
                         return 4;
                     break;
                 case gx.VertexAttribute.TEX0:
@@ -138,9 +138,9 @@
                 case gx.VertexAttribute.TEX5:
                 case gx.VertexAttribute.TEX6:
                 case gx.VertexAttribute.TEX7:
-                    if (format.componentCount == 0) // s
+                    if (format.componentCount == gx.CompCnt.TEX_S)
                         return 1;
-                    else if (format.componentCount == 1) // st
+                    else if (format.componentCount == gx.CompCnt.TEX_ST)
                         return 2;
                     break;
             }
