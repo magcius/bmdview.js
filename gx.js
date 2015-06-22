@@ -37,6 +37,15 @@
 		TEX7: 20,
 	};
 
+	gx.CompType = {
+		U8: 0,
+	    S8: 1,
+	    U16: 2,
+	    S16: 3,
+	    F32: 4,
+		RGBA8: 5,
+	};
+
 	gx.CompareType = {
 		NEVER: 0,
 		LESS: 1,
@@ -198,7 +207,7 @@
 		CI4: 0x8,
 		CI8: 0x9,
 		CI14: 0xa,
-		CMPR: 0xE, /*!< Compressed */ 
+		CMPR: 0xE, /*!< Compressed */
 	};
 
 	gx.TexPalette = {

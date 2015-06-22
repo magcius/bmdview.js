@@ -148,11 +148,11 @@
 
         function getDataTypeSize(format) {
             switch (format.dataType) {
-                case 3: // s16 fixed point
+                case gx.CompType.S16:
                     return 2;
-                case 4: // f32
+                case gx.CompType.F32: // f32
                     return 4;
-                case 5: // rgba
+                case gx.CompType.RGBA8: // rgba
                     return 1;
             }
         }
@@ -392,10 +392,10 @@
                     var idx;
 
                     switch (attrib.dataType) {
-                        case 1:
+                        case gx.CompType.S8:
                             idx = readByte(stream);
                             break;
-                        case 3:
+                        case gx.CompType.S16:
                             idx = readWord(stream);
                             break;
                     }
@@ -403,15 +403,15 @@
                     var savedPos = stream.pos;
                     stream.pos = format.globalOffset + (idx * size * format.dataTypeSize);
                     switch (format.dataType) {
-                        case 3: // s16 fixed point
+                        case gx.CompType.U8:
                             for (var i = 0; i < size; i++)
                                 batch.verts[dstOffs++] = readSWord(stream) * format.scale;
                             break;
-                        case 4: // f32
+                        case gx.CompType.F32:
                             for (var i = 0; i < size; i++)
                                 batch.verts[dstOffs++] = readFloat(stream);
                             break;
-                        case 5: // rgb(a)
+                        case gx.CompType.RGBA8:
                             for (var i = 0; i < size; i++)
                                 batch.verts[dstOffs++] = readByte(stream) / 255;
                             break;
