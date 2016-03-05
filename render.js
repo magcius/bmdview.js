@@ -482,7 +482,7 @@
             main.push("v_color" + i + " = " + value + ";");
 
             // XXX: We need proper lighting at some point.
-            if (colorChanInfo.enable)
+            if (0 && colorChanInfo.enable)
                 main.push("v_color.rgb *= 0.5;");
         }
 
