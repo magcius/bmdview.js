@@ -424,7 +424,7 @@
     function getTexGenSrc(texGenSrc) {
         switch (texGenSrc) {
             case gx.TexGenSrc.POS:
-                return "vec4(v_position, 0.0);";
+                return "vec4(v_position, 0.0)";
             case gx.TexGenSrc.NRM:
                 return "vec4(v_normal, 0.0)";
             case gx.TexGenSrc.TEX0:
@@ -439,7 +439,7 @@
             case gx.TexGenSrc.BINRM:
             case gx.TexGenSrc.TANGENT:
                 console.warn("Unsupported TexGenSrc", texGenSrc);
-                return "vec4(v_position, 0.0);";
+                return "vec4(v_position, 0.0)";
         }
     }
 
