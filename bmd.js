@@ -403,7 +403,7 @@
                     var savedPos = stream.pos;
                     stream.pos = format.globalOffset + (idx * size * format.dataTypeSize);
                     switch (format.dataType) {
-                        case gx.CompType.U8:
+                        case gx.CompType.S16:
                             for (var i = 0; i < size; i++)
                                 batch.verts[dstOffs++] = readSWord(stream) * format.scale;
                             break;
