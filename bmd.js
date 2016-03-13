@@ -355,9 +355,9 @@
                 if (attrib.type == 0xFF)
                     break;
 
-                if (attrib.dataType == 1)
+                if (attrib.dataType == gx.CompType.S8)
                     byteSize += 1;
-                else if (attrib.dataType == 3)
+                else if (attrib.dataType == gx.CompType.S16)
                     byteSize += 2;
                 else
                     console.warn("Unknown attrib data type", attrib.dataType);
