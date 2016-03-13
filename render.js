@@ -334,8 +334,11 @@
                 value = glslValue(d) + opStr + glslCall("mix", [a, b, c]);
                 value = getMods(value, bias, scale, clamp, type);
                 break;
+            case gx.TevOp.COMP_R8_GT:
+                value = "(" + a + ".r > " + b + ".r) ? " + a + " : vec3(0.0, 0.0, 0.0)";
+                break;
             default:
-                console.warn("unsupported op");
+                console.warn("unsupported op", op);
                 break;
         }
 
