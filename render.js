@@ -1,6 +1,9 @@
 (function() {
     "use strict";
 
+    var mat4 = glMatrix.mat4;
+    var vec3 = glMatrix.vec3;
+
     function createScene(gl) {
         var projection = mat4.create();
         mat4.perspective(projection, Math.PI / 4, gl.viewportWidth / gl.viewportHeight, 0.1*128, 2500*128);
