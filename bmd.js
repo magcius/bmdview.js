@@ -1,6 +1,9 @@
 (function(exports) {
     "use strict";
 
+    var mat4 = glMatrix.mat4;
+    var vec3 = glMatrix.vec3;
+
     function makeStream(buffer) {
         var stream = new DataView(buffer);
         stream.length = buffer.byteLength;
